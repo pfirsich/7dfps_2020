@@ -1,0 +1,9 @@
+[submodule "deps/glwrap"]
+	path = deps/glwrap
+	url = https://github.com/pfirsich/glwrap.git
+[submodule "deps/gltf"]
+	path = deps/gltf
+	url = https://github.com/pfirsich/gltf
+[submodule "deps/fmt"]
+	path = deps/fmt
+	url = https://github.com/fmtlib/fmt
