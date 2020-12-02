@@ -21,10 +21,33 @@ namespace fs = std::filesystem;
  * ECS: Move all (short) implementations out of the header part
  */
 
+struct Material {
+    std::shared_ptr<glw::Texture> baseColorTexture = nullptr;
+    glm::vec4 baseColor = glm::vec4(1.0f);
+
+    Material()
+        : baseColorTexture(getDefaultTexture())
+    {
+    }
+
+    static std::shared_ptr<glw::Texture> getDefaultTexture()
+    {
+        static auto defaultTexture
+            = std::make_shared<glw::Texture>(glwx::makeTexture2D(glm::vec4(1.0f)));
+        return defaultTexture;
+    }
+
+    static std::shared_ptr<Material> getDefaultMaterial()
+    {
+        static auto defaultMaterial = std::make_shared<Material>();
+        return defaultMaterial;
+    }
+};
+
 struct Mesh {
     struct Primitive {
         glwx::Primitive primitive;
-        // material
+        std::shared_ptr<Material> material;
         // This is just so the mesh can keep ownership its buffers
         std::vector<std::shared_ptr<glw::Buffer>> buffers;
     };
@@ -100,13 +123,14 @@ ecs::World& getWorld()
     return world;
 }
 
-template <typename Container>
-glm::mat4 makeMat4(const Container& vals)
+template <typename T, typename Container>
+T makeGlm(const Container& vals)
 {
-    assert(vals.size() == 16);
-    glm::mat4 ret;
+    T ret;
     const auto ptr = glm::value_ptr(ret);
-    for (size_t i = 0; i < 16; ++i)
+    static constexpr auto N = sizeof(T) / sizeof(decltype(*ptr)); // not clean
+    assert(vals.size() == N);
+    for (size_t i = 0; i < vals.size(); ++i)
         ptr[i] = vals[i];
     return ret;
 }
@@ -137,6 +161,8 @@ struct GltfImportCache {
     std::unordered_map<gltf::NodeIndex, ecs::EntityHandle> entityMap;
     std::unordered_map<gltf::MeshIndex, std::shared_ptr<Mesh>> meshMap;
     std::unordered_map<gltf::BufferViewIndex, std::shared_ptr<glw::Buffer>> bufferMap;
+    std::unordered_map<gltf::MaterialIndex, std::shared_ptr<Material>> materialMap;
+    std::unordered_map<gltf::TextureIndex, std::shared_ptr<glw::Texture>> textureMap;
 
     std::shared_ptr<glw::Buffer> getBuffer(
         const gltf::Gltf& gltfFile, gltf::BufferViewIndex bvIndex)
@@ -155,6 +181,66 @@ struct GltfImportCache {
         return buffer;
     }
 
+    std::shared_ptr<glw::Texture> getTexture(
+        const gltf::Gltf& gltfFile, gltf::TextureIndex textureIndex)
+    {
+        const auto it = textureMap.find(textureIndex);
+        if (it != textureMap.end())
+            return it->second;
+
+        const auto& gtexture = gltfFile.textures[textureIndex];
+
+        auto minFilter = glw::Texture::MinFilter::LinearMipmapNearest;
+        auto magFilter = glw::Texture::MagFilter::Linear;
+        auto wrapS = glw::Texture::WrapMode::Repeat;
+        auto wrapT = glw::Texture::WrapMode::Repeat;
+        if (gtexture.sampler) {
+            const auto& sampler = gltfFile.samplers[*gtexture.sampler];
+            if (sampler.minFilter)
+                minFilter = static_cast<glw::Texture::MinFilter>(*sampler.minFilter);
+            if (sampler.magFilter)
+                magFilter = static_cast<glw::Texture::MagFilter>(*sampler.magFilter);
+            wrapS = static_cast<glw::Texture::WrapMode>(sampler.wrapS);
+            wrapT = static_cast<glw::Texture::WrapMode>(sampler.wrapT);
+        }
+        const auto mipmaps = static_cast<GLenum>(minFilter)
+            >= static_cast<GLenum>(glw::Texture::MinFilter::NearestMipmapNearest);
+
+        assert(gtexture.source);
+        const auto data = gltfFile.getImageData(*gtexture.source);
+
+        auto tex = glwx::makeTexture2D(data.first, data.second, mipmaps);
+        assert(tex);
+        tex->setMinFilter(minFilter);
+        tex->setMagFilter(magFilter);
+        tex->setWrap(wrapS, wrapT);
+
+        auto texture = std::make_shared<glw::Texture>(std::move(*tex));
+        textureMap.emplace(textureIndex, texture);
+        return texture;
+    }
+
+    std::shared_ptr<Material> getMaterial(
+        const gltf::Gltf& gltfFile, gltf::MaterialIndex materialIndex)
+    {
+        const auto it = materialMap.find(materialIndex);
+        if (it != materialMap.end())
+            return it->second;
+
+        const auto& gmaterial = gltfFile.materials[materialIndex];
+        const auto material = std::make_shared<Material>();
+        assert(gmaterial.pbrMetallicRoughness);
+        const auto& pbr = *gmaterial.pbrMetallicRoughness;
+        material->baseColor = makeGlm<glm::vec4>(pbr.baseColorFactor);
+        if (pbr.baseColorTexture) {
+            const auto& texInfo = *pbr.baseColorTexture;
+            assert(texInfo.texCoord == 0);
+            material->baseColorTexture = getTexture(gltfFile, texInfo.index);
+        }
+        materialMap.emplace(materialIndex, material);
+        return material;
+    }
+
     std::shared_ptr<Mesh> getMesh(const gltf::Gltf& gltfFile, gltf::MeshIndex meshIndex)
     {
         const auto it = meshMap.find(meshIndex);
@@ -165,8 +251,8 @@ struct GltfImportCache {
         auto mesh = std::make_shared<Mesh>();
         for (const auto& gprim : gmesh.primitives) {
             const auto mode = static_cast<glw::DrawMode>(gprim.mode);
-            auto& prim
-                = mesh->primitives.emplace_back(Mesh::Primitive { glwx::Primitive(mode), {} });
+            auto& prim = mesh->primitives.emplace_back(
+                Mesh::Primitive { glwx::Primitive(mode), Material::getDefaultMaterial(), {} });
 
             // I need to determine a vertex format per buffer (which may be used in multiple
             // attributes), so I determine the set of buffers first, then build the formats.
@@ -213,6 +299,10 @@ struct GltfImportCache {
                     = glwx::Primitive::Range { accessor.byteOffset / glw::getIndexTypeSize(type),
                           accessor.count };
             }
+
+            if (gprim.material) {
+                prim.material = getMaterial(gltfFile, *gprim.material);
+            }
         }
         meshMap.emplace(meshIndex, mesh);
         return mesh;
@@ -228,7 +318,7 @@ struct GltfImportCache {
         const auto& node = gltfFile.nodes[nodeIndex];
         auto entity = world.createEntity();
         entity.add<comp::Hierarchy>();
-        entity.add<comp::Transform>().setMatrix(makeMat4(node.getTransformMatrix()));
+        entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));
         if (node.mesh) {
             entity.add<comp::Mesh>(getMesh(gltfFile, *node.mesh));
         }
@@ -290,16 +380,22 @@ const auto vert = R"(
 const auto frag = R"(
     #version 330 core
 
+    const float ambient = 0.4;
+    const float lightIntensity = 0.6;
+
+    uniform vec4 baseColorFactor;
+    uniform sampler2D baseColorTexture;
     uniform vec3 lightDir; // view space
 
+    in vec2 texCoords;
     in vec3 normal;
 
     out vec4 fragColor;
 
     void main() {
-        vec4 base = vec4(1.0);
+        vec4 base = baseColorFactor * texture2D(baseColorTexture, texCoords);
         float nDotL = max(dot(lightDir, normalize(normal)), 0.0);
-        fragColor = vec4(base.rgb * nDotL, base.a);
+        fragColor = vec4(base.rgb * ambient + base.rgb * nDotL * lightIntensity, base.a);
     }
 )"sv;
 
@@ -327,6 +423,12 @@ void renderSystem(const Camera& camera, ecs::World& world)
             shader.setUniform("normalMatrix", normal);
 
             for (const auto& prim : mesh->primitives) {
+                const auto& material
+                    = prim.material ? *prim.material : *Material::getDefaultMaterial();
+                material.baseColorTexture->bind(0);
+                shader.setUniform("baseColorTexture", 0);
+                shader.setUniform("baseColorFactor", material.baseColor);
+
                 prim.primitive.draw();
             }
         });
@@ -369,7 +471,7 @@ int main(int, char**)
     world.flush();
 
     const auto aspect = static_cast<float>(window.getSize().x) / window.getSize().y;
-    Camera camera { glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f), {} };
+    Camera camera { glm::perspective(glm::radians(45.0f), aspect, 0.1f, 200.0f), {} };
     camera.transform.lookAtPos(glm::vec3(0.0f, 2.0f, 5.0f), glm::vec3(0.0f, 2.0f, 0.0f));
 
     Controller controller(SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D,
