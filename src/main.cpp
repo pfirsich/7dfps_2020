@@ -11,6 +11,7 @@
 #include <glwx.hpp>
 
 #include "ecs.hpp"
+#include "input.hpp"
 
 using namespace std::literals;
 namespace fs = std::filesystem;
@@ -331,6 +332,25 @@ void renderSystem(const Camera& camera, ecs::World& world)
         });
 }
 
+void move(const Controller& ctrl, glwx::Transform& transform, float dt)
+{
+    if (ctrl.lookToggle->getState()) {
+        const auto sensitivity = 0.01f;
+        const auto look = glm::vec2(ctrl.lookX->getDelta(), ctrl.lookY->getDelta()) * sensitivity;
+        transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
+        transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
+    }
+
+    const auto forward = ctrl.forwards->getState() - ctrl.backwards->getState();
+    const auto sideways = ctrl.right->getState() - ctrl.left->getState();
+    const auto updown = ctrl.up->getState() - ctrl.down->getState();
+    const auto speed = ctrl.fast->getState() ? 10.f : 2.f;
+    const auto move = speed * dt * glm::vec3(sideways, updown, -forward); // forward is -z
+    if (glm::length(move) > 0.0f) {
+        transform.moveLocal(move);
+    }
+}
+
 int main(int, char**)
 {
     glwx::Window::Properties props;
@@ -348,20 +368,19 @@ int main(int, char**)
     }
     world.flush();
 
-    for (size_t i = 0; i < world.getEntityCount(); ++i) {
-        fmt::print("{}: {}", i, world.getComponentMask(i));
-    }
-
     const auto aspect = static_cast<float>(window.getSize().x) / window.getSize().y;
     Camera camera { glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f), {} };
-    camera.transform.lookAtPos(glm::vec3(15.0f, 5.0f, 15.0f), glm::vec3(0.0f));
+    camera.transform.lookAtPos(glm::vec3(0.0f, 2.0f, 5.0f), glm::vec3(0.0f, 2.0f, 0.0f));
+
+    Controller controller(SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D,
+        SDL_SCANCODE_R, SDL_SCANCODE_F, SDL_SCANCODE_LSHIFT, MouseButtonInput(1));
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
     SDL_Event event;
     bool running = true;
-    // float time = glwx::getTime();
+    float time = glwx::getTime();
     while (running) {
         while (SDL_PollEvent(&event) != 0) {
             switch (event.type) {
@@ -377,6 +396,13 @@ int main(int, char**)
                 break;
             }
         }
+
+        const auto now = glwx::getTime();
+        const auto dt = now - time;
+        time = now;
+
+        InputManager::instance().update();
+        move(controller, camera.transform, dt);
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

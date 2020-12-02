@@ -12,8 +12,9 @@ if (7dfps_ENABLE_ASAN)
 endif()
 
 set(SRC
-    main.cpp
-    ecs.cpp
+  ecs.cpp
+  input.cpp
+  main.cpp
 )
 list(TRANSFORM SRC PREPEND src/)
 
