@@ -3,6 +3,7 @@
 * Genre: Roughly a puzzle game
 * Target Audience: puzzle-ey kind of people, maybe programmers/engineers
 * A game about debugging - Like a programming game, but simulating the experience of debugging networked systems or troubleshooting (similar to our lines of work). It's about many interacting systems that fail together because single piece are behaving weirdly.
+* "Faster Than Light" as a CO-OP FPS from the inside.
 
 # Mechanics
 * There are a number of systems on the ship (life support (o2), an engine, shields, turrets, a star map, etc.) and they can all communicate with each other
@@ -116,13 +117,23 @@ You cannot send out the astrodroids during the storm, because they will get hit 
 It should be possible to abuse systems to fix problems with other systems. Trade power against O2 and other resources. Or keep systems online, while putting a great strain (wear) on other systems.
 
 # Style
+I bought this asset pack: https://syntystore.com/products/simple-space-interiors-cartoon-assets
+And it will mostly be unlit or use prebaked lighting, because it's a fucking game jam and I am not using an engine.
+The interfaces/UI should be like Alien (retrofuturistic):
+* https://sciencefictioninterfaces.tumblr.com/post/107518837096/various-images-showcasing-the-beautiful-interfaces
+* http://cdn4.artofthetitle.com/assets/sm/upload/4e/r6/z1/7z/AI%20In-World%20Interface%202.jpg
+* https://lukas_uhlitz.artstation.com/projects/XDdyL
+* https://www.youtube.com/watch?v=qb43-hn_-_c&list=PLapLmeK627G64iUuQBFDCDMzqIFX4aI1i&index=16&t=0s&app=desktop (the curve/warp might be interesting. the sounds are AMAZING and exactly what I would want)
+* https://www.youtube.com/watch?v=sT9R34SRvGQ&list=PLapLmeK627G64iUuQBFDCDMzqIFX4aI1i&index=13 (same sounds, still great)
+* https://gfycat.com/damphairydromedary
+* https://brennan.io/2017/06/14/alien-computer-card/ everything here
+* Print the name of each system at boot or as "screensaver" in big ASCII art: http://patorjk.com/software/taag/#p=display&v=0&f=Slant&t=AstraCarta%20(tm) - auch cool: Ogre, Standard, Star Wars, 3D-ASCII, ANSI Regular, ANSI Shadow, 5 Line Oblique, Banner, Banner3, Banner4,
+* https://typesetinthefuture.com/2014/12/01/alien/
+* https://store.steampowered.com/app/470260/Event0/
+* https://futureinterface.tumblr.com/
+* https://www.hudsandguis.com/home/2015/10/4/decrypt-by-peter-clark
+* https://i.pinimg.com/originals/0d/e2/ff/0de2ffdfd8325d2b19a985fd30a4c6ac.png
+* https://i.pinimg.com/originals/7a/42/a3/7a42a3949bad55f66a9c7c7988332171.jpg
 
-    Executive summary (game concept, genre, target audience, project scope, etc.)
-
-    Gameplay (objectives, game progressions, in-game GUI, etc.)
-
-    Mechanics (rules, combat, physics, etc.)
-
-    Game elements (worldbuilding, story, characters, locations, level design, etc.)
-
-    Assets (music, sound effects, 2D/3D models, etc.)
+Lots of monospace fonts, all caps blinking text. Stuff
+like "EXECUTED", "LINK UP", "LINK DOWN", "INITIALIZING"
