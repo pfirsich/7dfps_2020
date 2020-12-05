@@ -24,7 +24,7 @@ jobs:
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DCMAKE_CXX_COMPILER=clang++-9 ..
     - name: Build
-        cmake --build build --parallel
+      run: cmake --build build --parallel
   build-windows:
     runs-on: windows-latest
     steps:
@@ -44,4 +44,4 @@ jobs:
         cd build
         cmake -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ..
     - name: Build
-        cmake --build build --parallel
+        run: cmake --build build --parallel
