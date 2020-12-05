@@ -46,11 +46,15 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE:STRING=Release ..
     - name: Build
       run: cmake --build build --config Release --parallel
+    - name: Assemble Artifact Directory
+      shell: bash
+      run: |
+        mkdir artifact-out
+        cp ./build/Release/7dfps.exe artifact-out/
+        cp ./build/Release/*.dll artifact-out/
+        cp -R media/ artifact-out/
     - name: Artifact
       uses: actions/upload-artifact@v2
       with:
         name: 7dfps-win64
-        path: |
-          build/Release/7dfps.exe
-          build/Release/*.dll
-          media/
+        path: artifact-out
