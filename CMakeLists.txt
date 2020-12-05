@@ -6,11 +6,17 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(7dfps)
 
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 add_compile_definitions(NOMINMAX _USE_MATH_DEFINES) # Windows is trash
 
+add_subdirectory(deps/glwrap)
+add_subdirectory(deps/gltf)
+
+# Define functions after add_subdirectory, so they are not overwritten
 include(cmake/wall.cmake)
 
 if (7dfps_ENABLE_ASAN)
@@ -23,9 +29,6 @@ set(SRC
   main.cpp
 )
 list(TRANSFORM SRC PREPEND src/)
-
-add_subdirectory(deps/glwrap)
-add_subdirectory(deps/gltf)
 
 find_package(fmt CONFIG REQUIRED)
 
