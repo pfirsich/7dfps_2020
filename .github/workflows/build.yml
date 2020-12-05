@@ -11,7 +11,7 @@ jobs:
     - name: Update Submodules
       run: |
         git submodule update --init deps/glwrap deps/gltf
-        cd deps/glwrap && git submodule update --init deps/stb && cd ..
+        cd deps/glwrap && git submodule update --init deps/stb && cd ../..
         cd deps/gltf && git submodule update --init simdjson
     - name: Update Apt
       run: sudo apt update
@@ -22,7 +22,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DCMAKE_CXX_COMPILER=clang++-9 ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo -DCMAKE_CXX_COMPILER=clang++-9 ..
     - name: Build
       run: cmake --build build --parallel
   build-windows:
@@ -42,6 +42,12 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ..
+        cmake -DCMAKE_BUILD_TYPE:STRING=Release ..
     - name: Build
       run: cmake --build build --parallel
+    - name: Artifact
+      uses: actions/upload-artifact@v2
+        name: 7dfps-win64
+        path: |
+          build/Debug/7dfps.exe
+          build/Debug/*.dll
