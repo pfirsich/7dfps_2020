@@ -1,0 +1,47 @@
+name: continuous-integration
+on: [push]
+env:
+  BUILD_TYPE: RelWithDebInfo
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-16.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update Submodules
+      run: |
+        git submodule update --init deps/glwrap deps/gltf
+        cd deps/glwrap && git submodule update --init deps/stb && cd ..
+        cd deps/gltf && git submodule update --init simdjson
+    - name: Update Apt
+      run: sudo apt update
+    - name: Install Dependencies
+      run: |
+        sudo apt install --assume-yes build-essential ninja-build cmake clang-9 libsdl2-dev libfmt-dev libglm-dev
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DCMAKE_CXX_COMPILER=clang++-9 ..
+    - name: Build
+        cmake --build build --parallel
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update Submodules
+      run: |
+        git submodule update --init
+        cd .\deps\gltf
+        git submodule update --init .\simdjson
+    - name: Install Dependencies
+      run: |
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg.exe install sdl2:x64-windows fmt:x64-windows glm:x64-windows stb:x64-windows
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ..
+    - name: Build
+        cmake --build build --parallel
