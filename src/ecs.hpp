@@ -221,13 +221,14 @@ public:
             , mask(mask)
         {
         }
+
         ~EntityList() = default;
 
         EntityIterator begin()
         {
             // start at -1 and increment to get an invalid iterator if no entity matches
             // is this hackish?
-            return ++EntityIterator(this, -1);
+            return ++EntityIterator(this, MaxIndex);
         }
 
         EntityIterator end()

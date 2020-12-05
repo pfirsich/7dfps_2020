@@ -4,6 +4,6 @@
 [submodule "deps/gltf"]
 	path = deps/gltf
 	url = https://github.com/pfirsich/gltf
-[submodule "deps/fmt"]
-	path = deps/fmt
-	url = https://github.com/fmtlib/fmt
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg
