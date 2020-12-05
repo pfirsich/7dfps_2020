@@ -53,3 +53,4 @@ jobs:
         path: |
           build/Release/7dfps.exe
           build/Release/*.dll
+          media/
