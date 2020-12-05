@@ -44,4 +44,4 @@ jobs:
         cd build
         cmake -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ..
     - name: Build
-        run: cmake --build build --parallel
+      run: cmake --build build --parallel
