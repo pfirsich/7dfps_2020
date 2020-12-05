@@ -2,6 +2,7 @@ local lg = love.graphics
 local lk = love.keyboard
 
 local winW, winH = love.graphics.getDimensions()
+
 local rad = 40
 local colliders = {
     -- player
@@ -9,12 +10,14 @@ local colliders = {
 
     -- level
     {type = "circle", x = 600, y = 450, r = rad},
-    {type = "rectangle", x = 150, y = 0, w = 150, h = 250},
-    {type = "rectangle", x = 150, y = 0, w = 400, h = 150},
-    {type = "rectangle", x = 450, y = 0, w = 400, h = 150},
-    {type = "rectangle", x = 150, y = 250, w = 150, h = 250},
-    {type = "rectangle", x = 0, y = 350, w = 300, h = 150},
+    -- x, y for rectangle is the center and w, h are half-extents
+    {type = "rectangle", x = 225, y = 125, w = 75, h = 125},
+    {type = "rectangle", x = 350, y = 75, w = 200, h = 75},
+    {type = "rectangle", x = 650, y = 75, w = 200, h = 75},
+    {type = "rectangle", x = 225, y = 375, w = 75, h = 125},
+    {type = "rectangle", x = 150, y = 425, w = 150, h = 75},
 }
+
 local player = {
     collider = colliders[1],
     vel = {x = 0, y = 0},
@@ -29,8 +32,8 @@ end
 
 local function intersectCircleRect(circle, rect)
     -- clamped (into rect) circle position
-    local cx = clamp(circle.x, rect.x, rect.x + rect.w)
-    local cy = clamp(circle.y, rect.y, rect.y + rect.h)
+    local cx = clamp(circle.x, rect.x - rect.w, rect.x + rect.w)
+    local cy = clamp(circle.y, rect.y - rect.h, rect.y + rect.h)
 
     local relX = circle.x - cx
     local relY = circle.y - cy
@@ -185,7 +188,8 @@ function love.draw()
             lg.setColor(1, 0, 0)
         end
         if collider.type == "rectangle" then
-            lg.rectangle("line", collider.x, collider.y, collider.w, collider.h)
+            lg.rectangle("line", collider.x - collider.w, collider.y - collider.h,
+                collider.w * 2, collider.h * 2)
         elseif collider.type == "circle" then
             lg.circle(mode, collider.x, collider.y, collider.r)
         end
