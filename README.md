@@ -7,8 +7,8 @@ Windows builds are built by GitHub Actions, so go the [the actions page](https:/
 Currently you need to build it yourself.
 
 ## Building
-See [.github/workflows/build.yml] to see an example of how to build without vcpkg (build-linux) and an example of how to build with vcpkg (build-windows).
+See [.github/workflows/build.yml](build.yml) for an example of how to build without vcpkg (`build-linux`) and an example of how to build with vcpkg (`build-windows`).
 
-I advise you to not clone with `--recursive`, because simdjson has **a lot** of submodules, so it will take a long time and the resulting directory will be large.
+I advise you not to clone with `--recursive`, because simdjson has **a lot** of submodules, so it will take a long time and the resulting directory will be pretty large.
 
 If you don't want to build with vcpkg, make sure the vcpkg submodule is not initialized or deinitialize it with `git submodule deinit vcpkg`.
