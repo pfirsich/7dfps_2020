@@ -47,8 +47,8 @@ jobs:
       run: cmake --build build --parallel
     - name: Artifact
       uses: actions/upload-artifact@v2
-        with:
-          name: 7dfps-win64
-          path: |
-            build/Debug/7dfps.exe
-            build/Debug/*.dll
+      with:
+        name: 7dfps-win64
+        path: |
+          build/Release/7dfps.exe
+          build/Release/*.dll
