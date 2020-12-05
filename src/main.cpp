@@ -110,10 +110,56 @@ struct Hierarchy {
     }
 };
 
+struct Name {
+    std::string value;
+};
+
 // This thing is not data driven AT ALL
 using Mesh = std::shared_ptr<Mesh>;
 
 using Transform = glwx::Transform;
+
+struct Velocity {
+    glm::vec3 value { 0.0f, 0.0f, 0.0f };
+};
+
+struct CircleCollider {
+    float radius;
+};
+
+struct RectangleCollider {
+    glm::vec2 halfExtents;
+};
+
+struct PlayerInputController {
+    template <typename T>
+    PlayerInputController(SDL_Scancode forwards, SDL_Scancode backwards, SDL_Scancode left,
+        SDL_Scancode right, SDL_Scancode up, SDL_Scancode down, SDL_Scancode fast, T&& lookToggle)
+        : forwards(std::make_unique<KeyboardInput>(forwards))
+        , backwards(std::make_unique<KeyboardInput>(backwards))
+        , left(std::make_unique<KeyboardInput>(left))
+        , right(std::make_unique<KeyboardInput>(right))
+        , up(std::make_unique<KeyboardInput>(up))
+        , down(std::make_unique<KeyboardInput>(down))
+        , fast(std::make_unique<KeyboardInput>(fast))
+        , lookX(std::make_unique<MouseAxisInput>(MouseAxisInput::Axis::X))
+        , lookY(std::make_unique<MouseAxisInput>(MouseAxisInput::Axis::Y))
+        , lookToggle(std::make_unique<T>(lookToggle))
+    {
+    }
+
+    std::unique_ptr<BinaryInput> forwards;
+    std::unique_ptr<BinaryInput> backwards;
+    std::unique_ptr<BinaryInput> left;
+    std::unique_ptr<BinaryInput> right;
+    std::unique_ptr<BinaryInput> up;
+    std::unique_ptr<BinaryInput> down;
+    std::unique_ptr<BinaryInput> fast;
+
+    std::unique_ptr<AnalogInput> lookX;
+    std::unique_ptr<AnalogInput> lookY;
+    std::unique_ptr<BinaryInput> lookToggle;
+};
 }
 namespace comp = components;
 
@@ -317,16 +363,27 @@ struct GltfImportCache {
 
         const auto& node = gltfFile.nodes[nodeIndex];
         auto entity = world.createEntity();
-        entity.add<comp::Hierarchy>();
-        entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));
-        if (node.mesh) {
-            entity.add<comp::Mesh>(getMesh(gltfFile, *node.mesh));
+        if (node.name) {
+            entity.add<comp::Name>(comp::Name { *node.name });
         }
-        if (node.parent) {
-            auto parent = getEntity(world, gltfFile, *node.parent);
-            comp::Hierarchy::setParent(entity, parent);
+        if (node.name && node.name->find("collider") == 0) {
+            assert(!node.parent);
+            const auto trs = std::get<gltf::Node::Trs>(node.transform);
+            entity.add<comp::Transform>().setPosition(makeGlm<glm::vec3>(trs.translation));
+            entity.add<comp::RectangleCollider>().halfExtents
+                = glm::vec2(trs.scale[0], trs.scale[2]);
+        } else {
+            entity.add<comp::Hierarchy>();
+            entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));
+            if (node.mesh) {
+                entity.add<comp::Mesh>(getMesh(gltfFile, *node.mesh));
+            }
+            if (node.parent) {
+                auto parent = getEntity(world, gltfFile, *node.parent);
+                comp::Hierarchy::setParent(entity, parent);
+            }
+            entityMap.emplace(nodeIndex, entity);
         }
-        entityMap.emplace(nodeIndex, entity);
         return entity;
     }
 };
@@ -335,7 +392,6 @@ bool loadMap(const fs::path& path, ecs::World& world)
 {
     const auto gltfFileOpt = gltf::load(path);
     if (!gltfFileOpt) {
-        fmt::print("Could not load gltf file");
         return false;
     }
     const auto& gltfFile = *gltfFileOpt;
@@ -349,11 +405,6 @@ bool loadMap(const fs::path& path, ecs::World& world)
 
     return true;
 }
-
-struct Camera {
-    glm::mat4 projection;
-    glwx::Transform transform;
-};
 
 const auto vert = R"(
     #version 330 core
@@ -399,14 +450,15 @@ const auto frag = R"(
     }
 )"sv;
 
-void renderSystem(const Camera& camera, ecs::World& world)
+void renderSystem(
+    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform)
 {
     static glw::ShaderProgram shader = glwx::makeShaderProgram(vert, frag).value();
     shader.bind();
     shader.setUniform("lightDir", glm::vec3(0.0f, 0.0f, 1.0f));
 
-    shader.setUniform("projectionMatrix", camera.projection);
-    const auto view = glm::inverse(camera.transform.getMatrix());
+    shader.setUniform("projectionMatrix", projection);
+    const auto view = glm::inverse(cameraTransform.getMatrix());
     shader.setUniform("viewMatrix", view);
 
     world.forEachEntity<const comp::Hierarchy, const comp::Transform, const comp::Mesh>(
@@ -434,23 +486,143 @@ void renderSystem(const Camera& camera, ecs::World& world)
         });
 }
 
-void move(const Controller& ctrl, glwx::Transform& transform, float dt)
-{
-    if (ctrl.lookToggle->getState()) {
-        const auto sensitivity = 0.01f;
-        const auto look = glm::vec2(ctrl.lookX->getDelta(), ctrl.lookY->getDelta()) * sensitivity;
-        transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
-        transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
-    }
+struct CollisionResult {
+    glm::vec3 normal;
+    float penetrationDepth;
+};
 
-    const auto forward = ctrl.forwards->getState() - ctrl.backwards->getState();
-    const auto sideways = ctrl.right->getState() - ctrl.left->getState();
-    const auto updown = ctrl.up->getState() - ctrl.down->getState();
-    const auto speed = ctrl.fast->getState() ? 10.f : 2.f;
-    const auto move = speed * dt * glm::vec3(sideways, updown, -forward); // forward is -z
-    if (glm::length(move) > 0.0f) {
-        transform.moveLocal(move);
+std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo,
+    const comp::CircleCollider& circle, const comp::Transform& rectTrafo,
+    const comp::RectangleCollider& rect)
+{
+    // circle position clamped into rect
+    const auto circlePos = glm::vec2(circleTrafo.getPosition().x, circleTrafo.getPosition().z);
+    const auto rectPos = glm::vec2(rectTrafo.getPosition().x, rectTrafo.getPosition().z);
+    const auto clamped = glm::vec2(
+        std::clamp(circlePos.x, rectPos.x - rect.halfExtents.x, rectPos.x + rect.halfExtents.x),
+        std::clamp(circlePos.y, rectPos.y - rect.halfExtents.y, rectPos.y + rect.halfExtents.y));
+    const auto rel = circlePos - clamped;
+    const auto len = glm::length(rel);
+    if (len >= circle.radius)
+        return std::nullopt;
+
+    const auto normal = rel / len;
+    return CollisionResult { glm::vec3(normal.x, 0.0f, normal.y), circle.radius - len };
+}
+
+std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo1,
+    const comp::CircleCollider& circle1, const comp::Transform& circleTrafo2,
+    const comp::CircleCollider& circle2)
+{
+    const auto circlePos1 = glm::vec2(circleTrafo1.getPosition().x, circleTrafo1.getPosition().z);
+    const auto circlePos2 = glm::vec2(circleTrafo2.getPosition().x, circleTrafo2.getPosition().z);
+    const auto rel = circlePos1 - circlePos2;
+    const auto radiusSum = circle1.radius + circle2.radius;
+    const auto dist = glm::length(rel);
+    if (dist > radiusSum)
+        return std::nullopt;
+
+    const auto normal = rel / dist;
+    return CollisionResult { glm::vec3(normal.x, 0.0f, normal.y), radiusSum - dist };
+}
+
+std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::EntityHandle entity,
+    comp::Transform& transform, const comp::CircleCollider& collider)
+{
+    std::optional<CollisionResult> maxDepthResult;
+    // We use the maximum penetration depth as a heuristic to find the first collision (in time),
+    // because (intuitively) the longer ago a collision was in the past, the further an object can
+    // have penetrated another.
+    auto l = [&](ecs::EntityHandle other, const comp::Transform& otherTransform,
+                 const auto& otherCollider) {
+        if (entity == other)
+            return;
+        const auto col = intersect(transform, collider, otherTransform, otherCollider);
+        if (!col)
+            return;
+        if (!maxDepthResult || col->penetrationDepth > maxDepthResult->penetrationDepth) {
+            maxDepthResult = col;
+        }
+    };
+    world.forEachEntity<const comp::Transform, const comp::CircleCollider>(l);
+    world.forEachEntity<const comp::Transform, const comp::RectangleCollider>(l);
+    return maxDepthResult;
+}
+
+void integrateCircleColliders(ecs::World& world, ecs::EntityHandle entity, comp::Velocity& velocity,
+    comp::Transform& transform, const comp::CircleCollider& collider, float dt)
+{
+    transform.move(velocity.value * dt);
+    static constexpr size_t maxCollisionCount = 10;
+    size_t collisionCount = 0;
+    while (collisionCount < maxCollisionCount) {
+        const auto collision = findFirstCollision(world, entity, transform, collider);
+        if (!collision)
+            return;
+        transform.move(collision->normal * collision->penetrationDepth);
+        // project velocity on tangent (remove normal component)
+        const auto tangent = glm::vec3(-collision->normal.z, 0.0f, collision->normal.x);
+        velocity.value = glm::dot(velocity.value, tangent) * tangent;
+        collisionCount++;
     }
+}
+
+void integrationSystem(ecs::World& world, float dt)
+{
+    world.forEachEntity<comp::Velocity, comp::Transform, comp::CircleCollider>(
+        [&world, dt](ecs::EntityHandle entity, comp::Velocity& velocity, comp::Transform& transform,
+            const comp::CircleCollider& collider) {
+            integrateCircleColliders(world, entity, velocity, transform, collider, dt);
+        });
+}
+
+float rescale(float val, float fromMin, float fromMax, float toMin, float toMax)
+{
+    const auto clampVal = std::clamp(val, fromMin, fromMax);
+    const auto t = (clampVal - fromMin) / (fromMax - fromMin);
+    return toMin + t * (toMax - toMin);
+}
+
+void playerControlSystem(ecs::World& world, float dt)
+{
+    static constexpr auto maxSpeed = 5.0f;
+    static constexpr auto accell = maxSpeed * 5.0f;
+    static constexpr auto friction = maxSpeed * 6.0f;
+    // static constexpr auto turnAroundFactor = 2.0f;
+
+    world.forEachEntity<comp::Transform, comp::Velocity, comp::PlayerInputController>(
+        [dt](comp::Transform& transform, comp::Velocity& velocity,
+            const comp::PlayerInputController& ctrl) {
+            if (ctrl.lookToggle->getState()) {
+                const auto sensitivity = 0.01f;
+                const auto look
+                    = glm::vec2(ctrl.lookX->getDelta(), ctrl.lookY->getDelta()) * sensitivity;
+                transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
+                transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
+            }
+
+            const auto forward = ctrl.forwards->getState() - ctrl.backwards->getState();
+            const auto sideways = ctrl.right->getState() - ctrl.left->getState();
+            const auto move = glm::vec3(sideways, 0.0f, -forward); // forward is -z
+            if (glm::length(move) > 0.0f) {
+                auto moveWorld = transform.getOrientation() * move;
+                moveWorld.y = 0.0f;
+                velocity.value.y = 0.0f;
+                const auto factor = 1.0f;
+                //= rescale(-glm::dot(glm::normalize(velocity.value), glm::normalize(moveWorld)),
+                //  -1.0f, 1.0f, 1.0f, turnAroundFactor);
+                velocity.value += moveWorld * factor * accell * dt;
+
+                const auto speed = glm::length(velocity.value);
+                if (speed > maxSpeed) {
+                    velocity.value *= maxSpeed / speed;
+                }
+            } else {
+                const auto speed = glm::length(velocity.value) + 1e-5f;
+                const auto dir = velocity.value / speed;
+                velocity.value -= dir * std::min(speed, friction * dt);
+            }
+        });
 }
 
 int main(int, char**)
@@ -459,26 +631,29 @@ int main(int, char**)
     props.msaaSamples = 8;
     const auto window = glwx::makeWindow("7DFPS", 1024, 768, props).value();
     glw::State::instance().setViewport(window.getSize().x, window.getSize().y);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
 #ifndef NDEBUG
     glwx::debug::init();
 #endif
 
     auto& world = getWorld();
-    if (!loadMap("media/box_test.glb", world)) {
+    if (!loadMap("media/ship.glb", world)) {
         return 1;
     }
-    world.flush();
+
+    auto player = world.createEntity();
+    player.add<comp::Transform>();
+    player.add<comp::Velocity>();
+    player.add<comp::CircleCollider>(comp::CircleCollider { 0.6f });
+    player.add<comp::PlayerInputController>(SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A,
+        SDL_SCANCODE_D, SDL_SCANCODE_R, SDL_SCANCODE_F, SDL_SCANCODE_LSHIFT, MouseButtonInput(1));
 
     const auto aspect = static_cast<float>(window.getSize().x) / window.getSize().y;
-    Camera camera { glm::perspective(glm::radians(45.0f), aspect, 0.1f, 200.0f), {} };
-    camera.transform.lookAtPos(glm::vec3(0.0f, 2.0f, 5.0f), glm::vec3(0.0f, 2.0f, 0.0f));
+    const auto projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 200.0f);
 
-    Controller controller(SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D,
-        SDL_SCANCODE_R, SDL_SCANCODE_F, SDL_SCANCODE_LSHIFT, MouseButtonInput(1));
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    world.flush();
 
     SDL_Event event;
     bool running = true;
@@ -504,12 +679,15 @@ int main(int, char**)
         time = now;
 
         InputManager::instance().update();
-        move(controller, camera.transform, dt);
+        playerControlSystem(world, dt);
+        integrationSystem(world, dt);
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        renderSystem(camera, world);
+        auto cameraTransform = player.get<comp::Transform>();
+        cameraTransform.move(glm::vec3(0.0f, 3.5f, 0.0f));
+        renderSystem(world, projection, cameraTransform);
 
         window.swap();
     }

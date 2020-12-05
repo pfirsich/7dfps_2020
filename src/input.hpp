@@ -97,33 +97,3 @@ private:
 
     Axis axis_;
 };
-
-struct Controller {
-    template <typename T>
-    Controller(SDL_Scancode forwards, SDL_Scancode backwards, SDL_Scancode left, SDL_Scancode right,
-        SDL_Scancode up, SDL_Scancode down, SDL_Scancode fast, T&& lookToggle)
-        : forwards(std::make_unique<KeyboardInput>(forwards))
-        , backwards(std::make_unique<KeyboardInput>(backwards))
-        , left(std::make_unique<KeyboardInput>(left))
-        , right(std::make_unique<KeyboardInput>(right))
-        , up(std::make_unique<KeyboardInput>(up))
-        , down(std::make_unique<KeyboardInput>(down))
-        , fast(std::make_unique<KeyboardInput>(fast))
-        , lookX(std::make_unique<MouseAxisInput>(MouseAxisInput::Axis::X))
-        , lookY(std::make_unique<MouseAxisInput>(MouseAxisInput::Axis::Y))
-        , lookToggle(std::make_unique<T>(lookToggle))
-    {
-    }
-
-    std::unique_ptr<BinaryInput> forwards;
-    std::unique_ptr<BinaryInput> backwards;
-    std::unique_ptr<BinaryInput> left;
-    std::unique_ptr<BinaryInput> right;
-    std::unique_ptr<BinaryInput> up;
-    std::unique_ptr<BinaryInput> down;
-    std::unique_ptr<BinaryInput> fast;
-
-    std::unique_ptr<AnalogInput> lookX;
-    std::unique_ptr<AnalogInput> lookY;
-    std::unique_ptr<BinaryInput> lookToggle;
-};
