@@ -25,17 +25,23 @@ static const EntityId InvalidEntity = std::numeric_limits<EntityId>::max();
 using IndexType = uint32_t;
 static const IndexType MaxIndex = std::numeric_limits<IndexType>::max();
 
+// I did it in a dumb way before and now I borrowed from EnTT. Thanks, skypjack!
 namespace componentId {
-    static size_t idCounter = 0;
+    size_t getNextId();
 
     template <typename ComponentType>
-    size_t get();
+    size_t get()
+    {
+        static auto id = getNextId();
+        return id;
+    }
 }
 
 template <typename... Args>
 constexpr ComponentMask componentMask()
 {
-    return (... | (1ull << componentId::get<typename std::remove_const<Args>::type>()));
+    constexpr auto one = static_cast<ComponentMask>(1);
+    return (... | (one << componentId::get<typename std::remove_const<Args>::type>()));
 }
 
 struct ComponentPoolBase {
@@ -348,14 +354,6 @@ private:
 };
 
 // Implementation
-
-template <typename ComponentType>
-size_t componentId::get()
-{
-    static auto id = idCounter++;
-    assert(id < MaxComponents);
-    return id;
-}
 
 template <typename ComponentType>
 ComponentPool<ComponentType>& World::getPool(bool alloc)

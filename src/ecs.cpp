@@ -2,6 +2,13 @@
 
 namespace ecs {
 
+size_t componentId::getNextId()
+{
+    static size_t idCounter = 0;
+    assert(idCounter < MaxComponents);
+    return idCounter++;
+}
+
 World::EntityIterator& World::EntityIterator::operator++()
 {
     entityIndex_++;

@@ -19,14 +19,19 @@ add_subdirectory(deps/gltf)
 # Define functions after add_subdirectory, so they are not overwritten
 include(cmake/wall.cmake)
 
-if (7dfps_ENABLE_ASAN)
+if (7DFPS_ENABLE_ASAN)
   include(cmake/asan.cmake)
 endif()
 
 set(SRC
+  components.cpp
   ecs.cpp
+  gltfimport.cpp
+  graphics.cpp
   input.cpp
   main.cpp
+  physics.cpp
+  util.cpp
 )
 list(TRANSFORM SRC PREPEND src/)
 
