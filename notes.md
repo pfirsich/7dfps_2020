@@ -4,8 +4,6 @@
 * Target Audience: puzzle-ey kind of people, maybe programmers/engineers
 * A game about debugging - Like a programming game, but simulating the experience of debugging networked systems or troubleshooting (similar to our lines of work). It's about many interacting systems that fail together because single piece are behaving weirdly.
 * "Faster Than Light" as a CO-OP FPS from the inside.
-
-# Mechanics
 * There are a number of systems on the ship (life support (o2), an engine, shields, turrets, a star map, etc.) and they can all communicate with each other
 * They all have a uniform interface of a text-based shell and optionally individual screens with extra info/graphs
 
@@ -29,15 +27,23 @@ The manual will also show help topics that will explain the inner workings of th
 ## Message Bus
 The ship systems and terminals all communicate via a message bus, which is managed in C++. The systems are implemented in Lua (mostly). Every system registers with a name and every message has a type/name, you can do either `send(systemName, messageName, data)` or `publish(messageName, data)` and `subscribe(messageName)` all messages directly sent to the system or subscribed to will appear in the system's message queue.
 
+As real life troubleshooting often involves tools like `strace` or `tcpdump`/Wireshark we could maybe expose parts of the message bus with a `bustrace` command, that will essentially be a tcpdump of the message bus of that particular system. We could also include some fake messages.
+
 ## Screens
 These systems can draw vector art that can be sent to them via messages (like change color, draw line, draw rect, etc. - we will use [nanovg](https://github.com/memononen/nanovg) for this). It just draws to a texture which will be drawn in the world. You should be able to draw to them from Lua.
 
+Maybe the additional screens can be fully customized and you can control what they show using a `monitor <number>` command. For prebuilt vector graphics displays, you can simply use `monitor <number> <name>` (e.g. `monitor <number> heatmap`). But you can monitor a log with `monitor <number> log <name>` or a sensors (with graphs!) `monitor <number> sensor <name> <name> <name> ...` and possibly a bus with `monitor <number> bustrace`. The monitor number could be written on the monitor or a common ordering scheme could be used. We could also just show a little numbered overview when typing `man monitor`. If we require a look in the manual we could also use names.
+
+We could also allow the bridge to be a special system that simply provides a number of monitors that can monitor anything remotely (like `remotemonitor 1 reactor log <name>`).
+
 ## Maintenance
 ### Log-Diving
-On every system there is a log file, which can be printed with `log` and they will print in the usual log format (including date/time and severity). You will have to scan the logs for suspicious info logs, warning logs and error logs. Some of these will eventually or soon lead to failure or unoptimal performance of the system. Though some of them will be false positives or sometimes you will operate systems of the ship outside of normal parameters for bandaid fixes.
+On every system there are multiple log files, which can be printed with `log <name>` and they will print in the usual log format (including date/time and severity). You will have to scan the logs for suspicious info logs, warning logs and error logs, observing timestamps and patterns. Some of these will eventually or soon lead to failure or unoptimal performance of the system. Though some of them will be false positives or sometimes you will operate systems of the ship outside of normal parameters for bandaid fixes.
 Most of maintenance is going through the logs and sifting through to find interesting things. Most of the messages will just be noise though, so you will need experience and intricate knowledge of the manual to truly understand what you are seeing. Even then some messags will simply be noise. After a while the systems will be damaged and some warnings will be normal as well. Some suspicious logs should be recognizable without experience (e.g. warnings that repeat and get higher in frequency or a message that was a warning for a while and is now an error). Many maintenance operations lead to warnings and errors as well. But it should pay off to do maintenace, so the ship will not break down as likely.
 
 The amount of logs should be so high, that you can not reasonably look at them all in detail and you will have to decide what you spend your attention on.
+
+Maybe we want to have different log levels per source? But this might make it too easy?
 
 ## Hazards
 The ways you can die in the ship are:
@@ -60,7 +66,7 @@ All of these can be mitigated by preparing the ship's systems accordingly after 
 ### General
 Some systems will have a "reboot" procecure, which will fix some problems or be required for some operations, but will take a long time. Sometimes very intransparent problems that seem very weird (intermittent failures for example) will have no other fix but a costly reboot (which is kind of a joke).
 
-Maybe some other memes like that can be used, like a diagnostics mode, which will put the system in reduced capacity, but will print out very helpful information or maybe even a literal step-by-step guide of how to fix what you are doing, but it will take time and power and reduced capacity. Maybe you can also just not interact with the system as long as the diagnostics are running?
+Maybe some other memes like that can be used, like a diagnostics mode or "health check", which will put the system in reduced capacity, but will print out very helpful information or maybe even a literal step-by-step guide of how to fix what you are doing, but it will take time and power and reduced capacity. Maybe you can also just not interact with the system as long as the diagnostics are running?
 
 The amount of power you route to a system will determine how much of it you can use. E.g. If the engine runs in low-power-mode the wear will be higher and you can run *no* diagnostics. At low power levels you will have to choose the sensors you turn on:
 `sensor enable <name>` may show "insufficient power"
@@ -94,6 +100,16 @@ You can do different kinds of scans in different variations:
 ### Radiation-Shield (shows geiger-data)
 ### Sensors
 ### Doors
+Can be closed for hull breaches and opened to evacuate spaces in case of fire.
+
+## Standing Still
+Maybe we should provide a cloaking system that can be turned on pretty easily if the engine is off, so you can simply turn off the engine, stand still and take some time to fix a problem (while making no progress on your route though). This is like pausing in FTL. Most hazards are location-dependent, so not moving will get rid of those automatically (asteroids, solar flares).
+
+## Alerts (very optional)
+Maybe we should introduce a way to set up alerts like `alert log <logname> <string>` (fires when a string is found in a log) or `alert sensor <sensorname> less/equal/greater <value>` (self-explanatory), but there will only be a very limited number of alerts. With a customizable monitoring system this is not really necessary anymore, though. A cloak would be an option for enemies, but maybe just turning off the engines will make the ship invisible on other ships radar. We could possibly turn down the lights and change the background sound to sell the mood.
+
+## Physical Actions (optional)
+I think it would be nice if there were physical actios to perform in the ship apart from operating the turret. Repair things with tools, replace parts, open/close valves, carrying around measuring devices and most importantly plenty of **manual overrides**.
 
 # Metagame / Setting / Story
 ## Tutorial / First Level
@@ -105,6 +121,8 @@ In each level more and more events are happening and some systems will simply fa
 
 The game rises in difficulty also in the way that systems are relevant. In the first level (or two) you don't have to use the astrodroids and the engines never fail, so you have to manage a smaller number of systems. Everything is running smoothly so far. That also means that you *can* start learning about those systems in peace and that the ship is complete from the start.
 
+Getting to know the ship well should be rewarded a lot and good knowledge should lead to smooth operation.
+
 **OPEN**: If you die or a ship gets destroyed, do you start from the beginning or the start of the level? Does your ship get repaired/reset between levels?
 
 # Vision
@@ -115,6 +133,12 @@ You cannot send out the astrodroids during the storm, because they will get hit 
 
 ## Bandaid-Fixes
 It should be possible to abuse systems to fix problems with other systems. Trade power against O2 and other resources. Or keep systems online, while putting a great strain (wear) on other systems.
+
+## Enemy-Encounter
+Enemy found on short-range scanner, immediately power down some systems (which? definitely engine), power up the turret and the shields.
+
+# Random Notes
+* Sensor data could be: heat, pressure for engine/reactor.
 
 # Style
 I bought this asset pack: https://syntystore.com/products/simple-space-interiors-cartoon-assets
