@@ -48,7 +48,7 @@ const auto frag = R"(
     out vec4 fragColor;
 
     void main() {
-        vec4 base = baseColorFactor * texture2D(baseColorTexture, texCoords);
+        vec4 base = baseColorFactor * texture(baseColorTexture, texCoords);
         float nDotL = max(dot(lightDir, normalize(normal)), 0.0);
         fragColor = vec4(base.rgb * ambient + base.rgb * nDotL * lightIntensity, base.a);
     }
