@@ -95,6 +95,7 @@ void integrationSystem(ecs::World& world, float dt)
 void playerControlSystem(ecs::World& world, float dt)
 {
     static constexpr auto maxSpeed = 5.0f;
+    static constexpr auto fastBoostFactor = 2;
     static constexpr auto accell = maxSpeed * 5.0f;
     static constexpr auto friction = maxSpeed * 6.0f;
     // static constexpr auto turnAroundFactor = 2.0f;
@@ -113,6 +114,12 @@ void playerControlSystem(ecs::World& world, float dt)
             const auto forward = ctrl.forwards->getState() - ctrl.backwards->getState();
             const auto sideways = ctrl.right->getState() - ctrl.left->getState();
             const auto move = glm::vec3(sideways, 0.0f, -forward); // forward is -z
+
+            auto currentMaxSpeed = maxSpeed;
+            if (ctrl.fast->getState()) {
+                currentMaxSpeed *= fastBoostFactor;
+            }
+
             if (glm::length(move) > 0.0f) {
                 auto moveWorld = transform.getOrientation() * move;
                 moveWorld.y = 0.0f;
@@ -123,8 +130,8 @@ void playerControlSystem(ecs::World& world, float dt)
                 velocity.value += moveWorld * factor * accell * dt;
 
                 const auto speed = glm::length(velocity.value);
-                if (speed > maxSpeed) {
-                    velocity.value *= maxSpeed / speed;
+                if (speed > currentMaxSpeed) {
+                    velocity.value *= currentMaxSpeed / speed;
                 }
             } else {
                 const auto speed = glm::length(velocity.value) + 1e-5f;
