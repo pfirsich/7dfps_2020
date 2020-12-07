@@ -6,6 +6,8 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(7dfps)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_STANDARD 17)
@@ -24,23 +26,33 @@ if (7DFPS_ENABLE_ASAN)
 endif()
 
 set(SRC
+  client.cpp
   components.cpp
   ecs.cpp
+  enet.cpp
   gltfimport.cpp
   graphics.cpp
   input.cpp
   main.cpp
+  net.cpp
   physics.cpp
+  serialization.cpp
+  server.cpp
   util.cpp
 )
 list(TRANSFORM SRC PREPEND src/)
 
 find_package(fmt CONFIG REQUIRED)
+find_package(ENet REQUIRED)
+find_package(Threads REQUIRED)
 
 add_executable(7dfps ${SRC})
 target_include_directories(7dfps PUBLIC include)
 target_include_directories(7dfps PRIVATE deps/glwrap/include)
 target_include_directories(7dfps PRIVATE deps/gltf)
+target_include_directories(7dfps PRIVATE ${ENET_INCLUDE_DIRS})
 target_link_libraries(7dfps PRIVATE glwx gltf)
 target_link_libraries(7dfps PRIVATE fmt::fmt)
+target_link_libraries(7dfps PRIVATE ${ENET_LIBRARIES})
+target_link_libraries(7dfps PRIVATE Threads::Threads)
 set_wall(7dfps)

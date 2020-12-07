@@ -20,6 +20,14 @@ std::optional<ENetAddress> getAddress(const std::string& host, Port port)
     return address;
 }
 
+std::optional<std::string> getIp(const ENetAddress& addr)
+{
+    char buffer[16];
+    if (enet_address_get_host_ip(&addr, buffer, sizeof(buffer)) < 0)
+        return std::nullopt;
+    return std::string(buffer);
+}
+
 class Packet {
 public:
     enum class Delivery : uint32_t {
@@ -210,7 +218,9 @@ int server(const std::string& host, Port port)
         std::optional<Event> event;
         while ((event = server.service())) {
             if (const auto connect = std::get_if<ConnectEvent>(&event.value())) {
-                std::cout << "Client connected: " << connect->peer << std::endl;
+                std::cout << "Client connected from " << getIp(connect->peer->address).value()
+                          << ": connectId = " << connect->peer->connectID
+                          << ", data = " << connect->data << std::endl;
             } else if (const auto disconnect = std::get_if<DisconnectEvent>(&event.value())) {
                 // pass
             } else if (const auto receive = std::get_if<ReceiveEvent>(&event.value())) {
