@@ -6,6 +6,7 @@ env:
 jobs:
   build-linux:
     runs-on: ubuntu-20.04 # won't work on earlier version, because dependencies are too old there
+    if: "!contains(github.event.head_commit.message, 'Blend')"
     steps:
     - uses: actions/checkout@v2
     - name: Update Submodules
@@ -27,6 +28,7 @@ jobs:
       run: cmake --build build --parallel
   build-windows:
     runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, 'Blend')"
     steps:
     - uses: actions/checkout@v2
     - name: Update Submodules
