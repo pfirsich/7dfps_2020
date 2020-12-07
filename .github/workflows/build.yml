@@ -6,7 +6,7 @@ env:
 jobs:
   build-linux:
     runs-on: ubuntu-20.04 # won't work on earlier version, because dependencies are too old there
-    if: "!contains(github.event.head_commit.message, 'Blend')"
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
     steps:
     - uses: actions/checkout@v2
     - name: Update Submodules
@@ -18,7 +18,7 @@ jobs:
       run: sudo apt update
     - name: Install Dependencies
       run: |
-        sudo apt install --assume-yes build-essential ninja-build cmake clang-10 libsdl2-dev libfmt-dev libglm-dev
+        sudo apt install --assume-yes build-essential ninja-build cmake clang-10 libsdl2-dev libfmt-dev libglm-dev libenet-dev
     - name: Configure
       run: |
         mkdir build
@@ -28,7 +28,7 @@ jobs:
       run: cmake --build build --parallel
   build-windows:
     runs-on: windows-latest
-    if: "!contains(github.event.head_commit.message, 'Blend')"
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
     steps:
     - uses: actions/checkout@v2
     - name: Update Submodules

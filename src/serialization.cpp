@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
 float ntohf(uint32_t val)
 {
     static_assert(sizeof(float) == sizeof(uint32_t));
@@ -20,6 +21,7 @@ uint32_t htonf(float val)
     std::memcpy(&i, &val, sizeof(float));
     return hton(i);
 }
+#endif
 
 WriteBuffer::WriteBuffer(size_t capacity)
 {

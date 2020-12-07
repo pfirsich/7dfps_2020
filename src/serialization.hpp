@@ -27,8 +27,6 @@ T ntoh(T val)
     return val;
 }
 
-float ntohf(uint32_t val);
-
 template <typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
 T hton(T val)
 {
@@ -47,7 +45,10 @@ T hton(T val)
     return val;
 }
 
+#ifndef _WIN32
+float ntohf(uint32_t val);
 uint32_t htonf(float val);
+#endif
 
 class WriteBuffer {
 public:
