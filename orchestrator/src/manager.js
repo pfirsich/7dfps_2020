@@ -1,15 +1,40 @@
 const db = require("./db");
 const config = require("./config");
-
-const gameCodeSize = 2 ** 24;
-
 const DigitalOcean = require("do-wrapper").default;
+
 const doClient = new DigitalOcean(process.env.DO_ACCESS_TOKEN);
 
 async function startVm({ region }) {
   const vm = await db.addVm({ region });
 
-  // TODO: call do
+  const response = await doClient.droplets.create({
+    name: "7dfps-game-vm-" + vm.vmId,
+    region,
+    size: config.vmSize,
+    image: config.vmImage,
+    ssh_keys: config.vmSshKeys,
+    backups: false,
+    ipv6: true,
+    user_data: `echo "Hi, I'm a game server, VM ID: ${vm.vmId}"`,
+    monitoring: true,
+    volumes: null,
+    tags: [...config.vmTags, `vmId:${vm.vmId}`],
+  });
+
+  console.log(response);
+
+  // response.droplet.name
+  // response.droplet.id
+  // response.droplet.created_at
+
+  console.log(response.links.actions);
+
+  const { droplet } = await doClient.droplets.getById(response.droplet.id);
+
+  const publicNetwork = droplet.networks.v4.find((n) => n.type === "public");
+  const ipv4Address = publicNetwork.ip_address;
+
+  console.log(droplet.networks);
 
   return vm;
 }
@@ -37,7 +62,7 @@ async function getOrCreateVm({ region }) {
 }
 
 async function startGame({ region }) {
-  const gameCode = Math.round(Math.random() * gameCodeSize)
+  const gameCode = Math.round(Math.random() * config.gameCodeSize)
     .toString(16)
     .toUpperCase();
 

@@ -75,6 +75,7 @@ app.get("/games/:gameCode", async (req, res) => {
       });
     } else {
       res.json({
+        gameCode: gameInfo.gameCode,
         host: gameInfo.host,
         port: gameInfo.port,
       });

@@ -17,13 +17,11 @@ services:
     build: .
     restart: always
     ports:
-      - 8080:8080
+      - 5000:5000
     environment:
-      PORT: 8080
       DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: secret
+    env_file:
+      - ./.env
 
 volumes:
   db-data:
