@@ -2,14 +2,16 @@
 
 Starts VMs and game servers on DigitalOcean.
 
+## Getting Started
+
 - `cp .env.example .env`
-- Set DO_ACCESS_TOKEN in `.env`
+- Set `DO_ACCESS_TOKEN` in `.env`
 - `docker-compose up -d`
 - Open localhost:5000
 
 ## API
 
-## Get Regions
+### Get Regions
 
 ```sh
 curl http://localhost:5000/regions | jq
@@ -28,7 +30,7 @@ Example response:
 }
 ```
 
-## Create Game
+### Create Game
 
 ```sh
 curl -X POST http://localhost:5000/games -d '{"region": "fra1"}' -H "Content-Type: application/json" | jq
@@ -46,7 +48,7 @@ Example response:
 }
 ```
 
-## Get Game
+### Get Game
 
 ```sh
 curl http://localhost:5000/games/:gameCode |jq
