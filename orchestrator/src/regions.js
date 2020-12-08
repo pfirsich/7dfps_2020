@@ -1,0 +1,15 @@
+module.exports = {
+  // sfo1: "speedtest-sfo1.digitalocean.com",
+  // sfo2: "speedtest-sfo2.digitalocean.com",
+  sfo3: "speedtest-sfo3.digitalocean.com",
+  nyc1: "speedtest-nyc1.digitalocean.com",
+  // nyc2: "speedtest-nyc2.digitalocean.com",
+  // nyc3: "speedtest-nyc3.digitalocean.com",
+  // tor1: "speedtest-tor1.digitalocean.com",
+  // ams2: "speedtest-ams2.digitalocean.com",
+  // ams3: "speedtest-ams3.digitalocean.com",
+  // lon1: "speedtest-lon1.digitalocean.com",
+  fra1: "speedtest-fra1.digitalocean.com",
+  sgp1: "speedtest-sgp1.digitalocean.com",
+  blr1: "speedtest-blr1.digitalocean.com",
+};

@@ -1,12 +1,18 @@
+require("dotenv").config();
+
 const express = require("express");
+
 const morgan = require("morgan");
 const manager = require("./manager");
 const db = require("./db");
+const regions = require("./regions");
 
 const app = express();
 
 // http logging
 app.use(morgan("tiny"));
+
+app.use(express.json());
 
 const port = parseInt(process.env.PORT || "3000", 10);
 
@@ -17,28 +23,34 @@ app.get("/", (req, res) => {
 });
 
 app.get("/regions", (req, res) => {
-  res.json({
-    nyc1: "speedtest-nyc1.digitalocean.com",
-    nyc2: "speedtest-nyc2.digitalocean.com",
-    nyc3: "speedtest-nyc3.digitalocean.com",
-    tor1: "speedtest-tor1.digitalocean.com",
-    ams2: "speedtest-ams2.digitalocean.com",
-    ams3: "speedtest-ams3.digitalocean.com",
-    sfo1: "speedtest-sfo1.digitalocean.com",
-    sfo2: "speedtest-sfo2.digitalocean.com",
-    sgp1: "speedtest-sgp1.digitalocean.com",
-    lon1: "speedtest-lon1.digitalocean.com",
-    fra1: "speedtest-fra1.digitalocean.com",
-    blr1: "speedtest-blr1.digitalocean.com",
-  });
+  res.json(regions);
 });
 
 app.post("/games", async (req, res) => {
+  let { region } = req.body;
+
+  if (!region) {
+    res.status(400).json({ msg: "Invalid JSON" });
+    return;
+  }
+
+  if (!regions[region]) {
+    res.status(400).json({ msg: "Invalid region" });
+    return;
+  }
+
   try {
-    const gameInfo = await manager.startGame();
-    res.json(gameInfo);
+    const gameInfo = await manager.startGame({ region });
+    console.log("Created Game:", gameInfo);
+
+    res.json({
+      gameCode: gameInfo.gameCode,
+      host: gameInfo.host,
+      port: gameInfo.port,
+    });
   } catch (error) {
     console.error(error);
+
     if (error.full) {
       res.status(503).json({
         msg: "All servers full",
@@ -62,10 +74,14 @@ app.get("/games/:gameCode", async (req, res) => {
         msg: "Invalid game code",
       });
     } else {
-      res.json(gameInfo);
+      res.json({
+        host: gameInfo.host,
+        port: gameInfo.port,
+      });
     }
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       msg: "Internal server error",
     });
