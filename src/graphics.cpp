@@ -53,6 +53,67 @@ const auto frag = R"(
         fragColor = vec4(base.rgb * ambient + base.rgb * nDotL * lightIntensity, base.a);
     }
 )"sv;
+
+const auto skyboxVert = R"(
+    #version 330 core
+    out vec3 texCoords;
+
+    uniform mat4 modelViewProjection;
+
+    layout(location = 0) in vec3 attrPosition;
+
+    void main()
+    {
+        texCoords = attrPosition;
+        gl_Position = modelViewProjection * vec4(attrPosition, 1.0);
+        gl_Position.z = gl_Position.w; // make sure z will be 1.0 = far away
+    }
+)"sv;
+
+const auto skyboxFrag = R"(
+    #version 330 core
+    out vec4 fragColor;
+
+    in vec3 texCoords;
+
+    uniform samplerCube skyboxTexture;
+
+    void main()
+    {
+        fragColor = texture(skyboxTexture, texCoords);
+    }
+)"sv;
+}
+
+bool Skybox::load(const std::filesystem::path& posX, const std::filesystem::path& negX,
+    const std::filesystem::path& posY, const std::filesystem::path& negY,
+    const std::filesystem::path& posZ, const std::filesystem::path& negZ)
+{
+    auto skyboxTextureOpt = glwx::makeCubeTexture(posX, negX, posY, negY, posZ, negZ);
+    if (!skyboxTextureOpt) {
+        return false;
+    }
+    texture = std::move(*skyboxTextureOpt);
+
+    glw::VertexFormat vfmt;
+    vfmt.add(0, 3, glw::AttributeType::F32);
+    mesh = glwx::makeBoxMesh(vfmt, { 0 }, 1.0f, 1.0f, 1.0f);
+    return true;
+}
+
+void Skybox::draw(const glm::mat4& projection, const glwx::Transform& cameraTransform)
+{
+    static glw::ShaderProgram shader = glwx::makeShaderProgram(skyboxVert, skyboxFrag).value();
+    glDisable(GL_CULL_FACE);
+    glDepthMask(GL_FALSE);
+    // get rid of translation
+    auto view = glm::inverse(glm::mat4(glm::mat3(cameraTransform.getMatrix())));
+    shader.setUniform("modelViewProjection", projection * view);
+    texture.bind(0);
+    shader.setUniform("skyboxTexture", 0);
+    mesh.draw();
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
 }
 
 Material::Material()

@@ -6,6 +6,7 @@
 #include <glwx.hpp>
 
 #include "ecs.hpp"
+#include "graphics.hpp"
 #include "net.hpp"
 
 class Client {
@@ -27,6 +28,7 @@ private:
     enet::Host host_;
     glwx::Window window_;
     ecs::World world_;
+    std::unique_ptr<Skybox> skybox_;
     ecs::EntityHandle player_;
     glm::mat4 projection_;
     float time_;

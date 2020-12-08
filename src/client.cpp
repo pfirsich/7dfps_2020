@@ -13,6 +13,7 @@ bool Client::run(const std::string& host, Port port)
     props.msaaSamples = 8;
     window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
     resized(window_.getSize().x, window_.getSize().y);
+    glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
@@ -20,6 +21,12 @@ bool Client::run(const std::string& host, Port port)
     // TODO: Somehow filter some output out, because it's too much to learn anything right now
     // glwx::debug::init();
 #endif
+
+    skybox_ = std::make_unique<Skybox>();
+    if (!skybox_->load("media/skybox/1.png", "media/skybox/2.png", "media/skybox/3.png",
+            "media/skybox/4.png", "media/skybox/5.png", "media/skybox/6.png")) {
+        return false;
+    };
 
     if (!loadMap("media/ship.glb", world_)) {
         return false;
@@ -134,12 +141,12 @@ void Client::update(float dt)
 
 void Client::draw()
 {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT);
 
     auto cameraTransform = player_.get<comp::Transform>();
     cameraTransform.move(glm::vec3(0.0f, 3.5f, 0.0f));
     renderSystem(world_, projection_, cameraTransform);
+    skybox_->draw(projection_, cameraTransform);
 
     window_.swap();
 }

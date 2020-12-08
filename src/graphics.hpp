@@ -31,6 +31,17 @@ struct Mesh {
     std::vector<Primitive> primitives;
 };
 
+struct Skybox {
+    glwx::Mesh mesh;
+    glw::Texture texture;
+
+    bool load(const std::filesystem::path& posX, const std::filesystem::path& negX,
+        const std::filesystem::path& posY, const std::filesystem::path& negY,
+        const std::filesystem::path& posZ, const std::filesystem::path& negZ);
+
+    void draw(const glm::mat4& projection, const glwx::Transform& cameraTransform);
+};
+
 namespace comp {
 // This thing is not data driven at all
 using Mesh = std::shared_ptr<Mesh>;
