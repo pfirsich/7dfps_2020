@@ -35,8 +35,8 @@ const auto vert = R"(
 const auto frag = R"(
     #version 330 core
 
-    const float ambient = 0.4;
-    const float lightIntensity = 0.6;
+    const float ambient = 1.0;
+    const float lightIntensity = 0.0;
 
     uniform vec4 baseColorFactor;
     uniform sampler2D baseColorTexture;
