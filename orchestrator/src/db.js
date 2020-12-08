@@ -26,12 +26,29 @@ function query(...args) {
   });
 }
 
-async function listVms() {
-  const res = await query("SELECT * FROM vms");
+async function countVms() {
+  const res = await query("SELECT COUNT(*) as vmCount FROM vms");
+
+  return res.rows[0].vmcount;
+}
+
+async function getFreeVms({ region, maxGamesOnVm }) {
+  // Sort descending to always fill VMs first
+  const res = await query(
+    `SELECT vms.vmid, vms.region, COUNT(games.gamecode) AS gamesCount
+        FROM vms
+        JOIN games ON vms.vmId=games.vmId
+        WHERE region = $1
+        GROUP BY vms.vmid
+        HAVING COUNT(games.gamecode) < $2
+        ORDER BY gamesCount DESC`,
+    [region, maxGamesOnVm]
+  );
 
   return res.rows.map((row) => ({
     vmId: row.vmid,
     region: row.region,
+    gamesCount: Number(row.gamescount),
   }));
 }
 
@@ -85,7 +102,8 @@ async function addGame({ gameCode, host, port, vmId }) {
 }
 
 module.exports = {
-  listVms,
+  countVms,
+  getFreeVms,
   addVm,
   getGame,
   addGame,

@@ -1,17 +1,39 @@
 const db = require("./db");
+const config = require("./config");
 
 const gameCodeSize = 2 ** 24;
 
-async function getOrCreateVm({ region }) {
-  // list vms in region
+const DigitalOcean = require("do-wrapper").default;
+const doClient = new DigitalOcean(process.env.DO_ACCESS_TOKEN);
 
-  // check if max vm count reached
-
-  // start vm
-
+async function startVm({ region }) {
   const vm = await db.addVm({ region });
 
+  // TODO: call do
+
   return vm;
+}
+
+// TODO: this should all be one transaction....
+async function getOrCreateVm({ region }) {
+  const freeVms = await db.getFreeVms({
+    region,
+    maxGamesOnVm: config.maxGamesOnVm,
+  });
+
+  if (freeVms.length > 0) {
+    return freeVms[0];
+  }
+
+  const vmCount = db.countVms();
+
+  if (vmCount >= config.maxVms) {
+    const error = new Error("Max VM count reached");
+    error.full = true;
+    throw error;
+  }
+
+  return startVm({ region });
 }
 
 async function startGame({ region }) {
@@ -21,7 +43,7 @@ async function startGame({ region }) {
 
   const vm = await getOrCreateVm({ region });
 
-  // start game
+  // TODO: start game
 
   const gameInfo = await db.addGame({
     gameCode,
