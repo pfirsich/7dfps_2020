@@ -46,8 +46,15 @@ Port getPort(const std::map<std::string, docopt::value>& args)
 
 int main(int argc, char** argv)
 {
+    if (enet_initialize()) {
+        fmt::print(stderr, "Could not initialize ENet\n");
+        return 1;
+    }
+    atexit(enet_deinitialize);
+
     const auto args = docopt::docopt(usage, { argv + 1, argv + argc }, true, version);
     // for (auto const& arg : args) std::cout << arg.first << ": " << arg.second << std::endl;
+
     if (args.at("solo").asBool()) {
         Server server;
         std::atomic<bool> serverFailed { false };
