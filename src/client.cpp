@@ -24,6 +24,8 @@ bool Client::run(const std::string& host, Port port)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
+    InputManager::instance().update(); // Initialize data for first frame
+
 #ifndef NDEBUG
     // TODO: Somehow filter some output out, because it's too much to learn anything right now
     // glwx::debug::init();
@@ -193,26 +195,48 @@ void Client::processEnetEvents()
     }
 }
 
+void Client::handleInteractions()
+{
+    world_.forEachEntity<const comp::RenderHighlight>(
+        [](ecs::EntityHandle entity, const comp::RenderHighlight&) {
+            entity.remove<comp::RenderHighlight>();
+        });
+
+    auto& trafo = player_.get<comp::Transform>();
+    const auto rayOrigin = trafo.getPosition() + glm::vec3(0.0f, cameraOffsetY, 0.0f);
+    const auto rayDir = trafo.getForward();
+    auto hit = castRay(world_, rayOrigin, rayDir);
+    if (hit && hit->t <= interactDistance) {
+        static ecs::EntityHandle lastHit;
+        if (hit->entity != lastHit) {
+            // fmt::print("Hit entity '{}' at t = {}\n", comp::Name::get(hit->entity), hit->t);
+            lastHit = hit->entity;
+        }
+        if (debugRaycast) {
+            hitMarker_.get<comp::Transform>().setPosition(rayOrigin + rayDir * hit->t);
+        }
+        auto linked = hit->entity.getPtr<comp::VisualLink>();
+        if (linked) {
+            linked->entity.add<comp::RenderHighlight>();
+            if (player_.get<comp::PlayerInputController>().interact->getPressed()) {
+                if (const auto ladder = hit->entity.getPtr<comp::Ladder>()) {
+                    const auto delta = ladder->dir == comp::Ladder::Dir::Up ? 1.0f : -1.0f;
+                    trafo.setPosition(
+                        trafo.getPosition() + glm::vec3(0.0f, delta * floorHeight, 0.0f));
+                }
+            }
+        }
+    } else {
+        hitMarker_.get<comp::Transform>().setPosition(glm::vec3(0.0f, -1000.0f, 0.0f));
+    }
+}
+
 void Client::update(float dt)
 {
     InputManager::instance().update();
     playerControlSystem(world_, dt);
     integrationSystem(world_, dt);
-
-    const auto& trafo = player_.get<comp::Transform>();
-    const auto rayOrigin = trafo.getPosition() + glm::vec3(0.0f, cameraOffsetY, 0.0f);
-    const auto rayDir = trafo.getForward();
-    const auto hit = castRay(world_, rayOrigin, rayDir);
-    if (debugRaycast && hit) {
-        static ecs::EntityHandle lastHit;
-        if (hit->entity != lastHit) {
-            fmt::print("Hit entity '{}' at t = {}\n", comp::Name::get(hit->entity), hit->t);
-            lastHit = hit->entity;
-        }
-        hitMarker_.get<comp::Transform>().setPosition(rayOrigin + rayDir * hit->t);
-    } else {
-        hitMarker_.get<comp::Transform>().setPosition(glm::vec3(0.0f, -1000.0f, 0.0f));
-    }
+    handleInteractions();
 }
 
 void Client::sendUpdate()

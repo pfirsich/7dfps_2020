@@ -26,6 +26,7 @@ private:
     void receive(const enet::Packet& packet);
     void draw();
     void addPlayer(PlayerId id);
+    void handleInteractions();
 
     template <MessageType MsgType>
     bool send(Channel channel, const Message<MsgType>& message)

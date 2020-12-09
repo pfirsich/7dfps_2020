@@ -179,6 +179,14 @@ struct GltfImportCache {
         return mesh;
     }
 
+    std::optional<gltf::NodeIndex> getNodeIndex(const gltf::Gltf& gltfFile, const std::string& name)
+    {
+        for (size_t i = 0; i < gltfFile.nodes.size(); ++i)
+            if (gltfFile.nodes[i].name && gltfFile.nodes[i].name == name)
+                return i;
+        return std::nullopt;
+    }
+
     ecs::EntityHandle getEntity(
         ecs::World& world, const gltf::Gltf& gltfFile, gltf::NodeIndex nodeIndex, bool server)
     {
@@ -206,6 +214,27 @@ struct GltfImportCache {
             entity.add<comp::Transform>().setPosition(
                 makeGlm<glm::vec3>(trs.translation) + offset * trsScale);
             entity.add<comp::BoxCollider>().halfExtents = trsScale * scale;
+
+            const auto& extras = node.extras;
+            if (!std::holds_alternative<gltf::JsonNull>(extras)) {
+                const auto& obj = *std::get<std::unique_ptr<gltf::JsonObject>>(extras);
+                if (obj.count("visual_link")) {
+                    const auto name = std::get<std::string>(obj.at("visual_link"));
+                    const auto nodeIndex = getNodeIndex(gltfFile, name);
+                    if (nodeIndex) {
+                        entity.add<comp::VisualLink>().entity
+                            = getEntity(world, gltfFile, *nodeIndex, server);
+                    } else {
+                        fmt::print(stderr, "Invalid visual link '{}'\n", name);
+                    }
+                }
+                if (obj.count("ladder")) {
+                    const auto dir = std::get<std::string>(obj.at("ladder"));
+                    assert(dir == "up" || dir == "down");
+                    entity.add<comp::Ladder>().dir
+                        = dir == "up" ? comp::Ladder::Dir::Up : comp::Ladder::Dir::Down;
+                }
+            }
         } else {
             entity.add<comp::Hierarchy>();
             entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));

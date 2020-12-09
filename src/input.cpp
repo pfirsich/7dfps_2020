@@ -8,7 +8,8 @@
 InputManager::InputState::InputState()
     : keyboardState(SDL_GetKeyboardState(nullptr))
 {
-    mouseButtonState = SDL_GetMouseState(&mouseX, &mouseY);
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+    mouseButtonState = SDL_GetRelativeMouseState(&mouseRelX, &mouseRelY);
 }
 
 void InputManager::update()
@@ -59,11 +60,11 @@ float AnalogInput::getDelta(size_t pastFrame) const
     return getState(pastFrame) - getState(pastFrame + 1);
 }
 
-float MouseAxisInput::getState(const InputManager::InputState& inputState) const
+float MouseMoveInput::getState(const InputManager::InputState& inputState) const
 {
     if (axis_ == Axis::X)
-        return inputState.mouseX;
+        return inputState.mouseRelX;
     if (axis_ == Axis::Y)
-        return inputState.mouseY;
+        return inputState.mouseRelY;
     assert(false);
 }

@@ -17,8 +17,8 @@ public:
 
     struct InputState {
         uint32_t mouseButtonState = 0;
-        int mouseX = 0;
-        int mouseY = 0;
+        int mouseRelX = 0;
+        int mouseRelY = 0;
         const uint8_t* keyboardState;
 
         InputState();
@@ -84,10 +84,10 @@ protected:
     virtual float getState(const InputManager::InputState& inputState) const = 0;
 };
 
-struct MouseAxisInput : public AnalogInput {
+struct MouseMoveInput : public AnalogInput {
     enum class Axis { X, Y };
 
-    MouseAxisInput(Axis axis)
+    MouseMoveInput(Axis axis)
         : axis_(axis)
     {
     }

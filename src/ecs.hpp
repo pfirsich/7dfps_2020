@@ -413,13 +413,16 @@ ComponentType& World::getComponent(EntityId entityId)
 template <typename ComponentType>
 ComponentType* World::getComponentPtr(EntityId entityId)
 {
-    auto& pool = getPool<typename std::remove_const_t<ComponentType>>(false);
+    auto& pool = getPool<typename std::remove_const_t<ComponentType>>(true);
     return pool.getPtr(entityId);
 }
 
 template <typename ComponentType>
 void World::removeComponent(EntityId entityId)
 {
+    assert(entityId < componentMasks_.size());
+    assert(hasComponents<ComponentType>(entityId));
+    componentMasks_[entityId] &= ~componentMask<ComponentType>();
     getPool<ComponentType>().remove(entityId);
 }
 

@@ -1,6 +1,7 @@
 #include "physics.hpp"
 
 #include "components.hpp"
+#include "constants.hpp"
 
 namespace {
 bool intervalsOverlap(float minA, float maxA, float minB, float maxB)
@@ -159,20 +160,17 @@ void playerControlSystem(ecs::World& world, float dt)
     world.forEachEntity<comp::Transform, comp::Velocity, comp::PlayerInputController>(
         [dt](comp::Transform& transform, comp::Velocity& velocity,
             const comp::PlayerInputController& ctrl) {
-            if (ctrl.lookToggle->getState()) {
-                const auto sensitivity = 0.0025f;
-                const auto look
-                    = glm::vec2(ctrl.lookX->getDelta(), ctrl.lookY->getDelta()) * sensitivity;
-                transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
-                transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
-            }
+            const auto look
+                = glm::vec2(ctrl.lookX->getState(), ctrl.lookY->getState()) * lookSensitivity;
+            transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
+            transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
 
             const auto forward = ctrl.forwards->getState() - ctrl.backwards->getState();
             const auto sideways = ctrl.right->getState() - ctrl.left->getState();
             const auto move = glm::vec3(sideways, 0.0f, -forward); // forward is -z
 
             auto currentMaxSpeed = maxSpeed;
-            if (ctrl.fast->getState()) {
+            if (ctrl.sprint->getState()) {
                 currentMaxSpeed *= fastBoostFactor;
             }
 

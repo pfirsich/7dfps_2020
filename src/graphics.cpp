@@ -4,8 +4,12 @@
 
 #include <glm/gtx/transform.hpp>
 
+#include <glwx.hpp>
+
 #include "components.hpp"
+#include "constants.hpp"
 #include "physics.hpp"
+#include "util.hpp"
 
 using namespace std::literals;
 
@@ -17,6 +21,7 @@ const auto vert = R"(
     uniform mat4 viewMatrix;
     uniform mat4 projectionMatrix;
     uniform mat3 normalMatrix;
+    uniform float blowup;
 
     layout (location = 0) in vec3 attrPosition;
     layout (location = 1) in vec3 attrNormal;
@@ -28,7 +33,7 @@ const auto vert = R"(
     void main() {
         texCoords = attrTexCoords;
         normal = normalMatrix * attrNormal;
-        gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(attrPosition, 1.0);
+        gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(attrPosition + attrNormal * blowup, 1.0);
     }
 )"sv;
 
@@ -40,6 +45,8 @@ const auto frag = R"(
     uniform vec4 baseColorFactor;
     uniform sampler2D baseColorTexture;
     uniform vec3 lightDir; // view space
+    uniform vec4 glowColor;
+    uniform float glowAmount;
 
     in vec2 texCoords;
     in vec3 normal;
@@ -49,7 +56,7 @@ const auto frag = R"(
     void main() {
         vec4 base = baseColorFactor * texture(baseColorTexture, texCoords);
         float nDotL = max(dot(lightDir, normalize(normal)), 0.0);
-        fragColor = vec4(base.rgb * mix(nDotL, 1.0, ambientBlend), base.a);
+        fragColor = mix(vec4(base.rgb * mix(nDotL, 1.0, ambientBlend), base.a), glowColor, glowAmount);
     }
 )"sv;
 
@@ -133,12 +140,34 @@ std::shared_ptr<Material> Material::getDefaultMaterial()
     return defaultMaterial;
 }
 
+void Mesh::draw(const glw::ShaderProgram& shader) const
+{
+    for (const auto& prim : primitives) {
+        const auto& material = prim.material ? *prim.material : *Material::getDefaultMaterial();
+        material.baseColorTexture->bind(0);
+        shader.setUniform("baseColorTexture", 0);
+        shader.setUniform("baseColorFactor", material.baseColor);
+        prim.primitive.draw();
+    }
+}
+
 namespace {
 glw::ShaderProgram& getShader()
 {
     static glw::ShaderProgram shader = glwx::makeShaderProgram(vert, frag).value();
     return shader;
 }
+}
+
+glm::mat4 getModelMatrix(ecs::EntityHandle entity, const comp::Transform& transform)
+{
+    if (entity.has<comp::Hierarchy>()) {
+        auto parent = entity.get<comp::Hierarchy>().parent;
+        if (parent && parent.has<comp::Transform>()) {
+            return parent.get<comp::Transform>().getMatrix() * transform.getMatrix();
+        }
+    }
+    return transform.getMatrix();
 }
 
 void renderSystem(
@@ -152,33 +181,32 @@ void renderSystem(
     const auto view = glm::inverse(cameraTransform.getMatrix());
     shader.setUniform("viewMatrix", view);
     shader.setUniform("ambientBlend", 0.8f);
+    shader.setUniform("glowColor", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+    const float glowAmount = rescale(
+        std::cos(glwx::getTime() * glowFrequency * 2.0f * M_PI), -1.0f, 1.0f, glowMin, glowMax);
 
     world.forEachEntity<const comp::Transform, const comp::Mesh>(
-        [&view, &shader](
+        [&view, &shader, glowAmount](
             ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
-            const auto model = [&]() {
-                if (entity.has<comp::Hierarchy>()) {
-                    auto parent = entity.get<comp::Hierarchy>().parent;
-                    if (parent && parent.has<comp::Transform>()) {
-                        return parent.get<comp::Transform>().getMatrix() * transform.getMatrix();
-                    }
-                }
-                return transform.getMatrix();
-            }();
-
+            const auto model = getModelMatrix(entity, transform);
             shader.setUniform("modelMatrix", model);
             const auto modelView = view * model;
             const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
             shader.setUniform("normalMatrix", normal);
 
-            for (const auto& prim : mesh->primitives) {
-                const auto& material
-                    = prim.material ? *prim.material : *Material::getDefaultMaterial();
-                material.baseColorTexture->bind(0);
-                shader.setUniform("baseColorTexture", 0);
-                shader.setUniform("baseColorFactor", material.baseColor);
-                prim.primitive.draw();
+            const auto highlighted = entity.has<comp::RenderHighlight>();
+            if (highlighted) {
+                glFrontFace(GL_CW);
+                shader.setUniform("glowAmount", 1.0f);
+                shader.setUniform("blowup", outlineBlowup);
+                mesh->draw(shader);
+                glFrontFace(GL_CCW);
             }
+
+            shader.setUniform("glowAmount", highlighted ? glowAmount : 0.0f);
+            shader.setUniform("blowup", 0.0f);
+
+            mesh->draw(shader);
         });
 }
 
@@ -213,6 +241,7 @@ void collisionRenderSystem(
     shader.setUniform("baseColorTexture", 0);
     shader.setUniform("baseColorFactor", glm::vec4(1.0f));
     shader.setUniform("ambientBlend", 0.2f);
+    shader.setUniform("glowAmount", 0.0f);
 
     world.forEachEntity<const comp::Transform, const comp::BoxCollider>(
         [&view, &shader](const comp::Transform& transform, const comp::BoxCollider& collider) {

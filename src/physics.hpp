@@ -25,20 +25,29 @@ struct BoxCollider {
     glm::vec3 halfExtents;
 };
 
+struct VisualLink {
+    ecs::EntityHandle entity;
+};
+
+struct Ladder {
+    enum class Dir { Up, Down };
+    Dir dir;
+};
+
 struct PlayerInputController {
     template <typename T>
     PlayerInputController(SDL_Scancode forwards, SDL_Scancode backwards, SDL_Scancode left,
-        SDL_Scancode right, SDL_Scancode up, SDL_Scancode down, SDL_Scancode fast, T&& lookToggle)
+        SDL_Scancode right, SDL_Scancode up, SDL_Scancode down, SDL_Scancode sprint, T&& interact)
         : forwards(std::make_unique<KeyboardInput>(forwards))
         , backwards(std::make_unique<KeyboardInput>(backwards))
         , left(std::make_unique<KeyboardInput>(left))
         , right(std::make_unique<KeyboardInput>(right))
         , up(std::make_unique<KeyboardInput>(up))
         , down(std::make_unique<KeyboardInput>(down))
-        , fast(std::make_unique<KeyboardInput>(fast))
-        , lookX(std::make_unique<MouseAxisInput>(MouseAxisInput::Axis::X))
-        , lookY(std::make_unique<MouseAxisInput>(MouseAxisInput::Axis::Y))
-        , lookToggle(std::make_unique<T>(lookToggle))
+        , sprint(std::make_unique<KeyboardInput>(sprint))
+        , lookX(std::make_unique<MouseMoveInput>(MouseMoveInput::Axis::X))
+        , lookY(std::make_unique<MouseMoveInput>(MouseMoveInput::Axis::Y))
+        , interact(std::make_unique<T>(interact))
     {
     }
 
@@ -48,11 +57,12 @@ struct PlayerInputController {
     std::unique_ptr<BinaryInput> right;
     std::unique_ptr<BinaryInput> up;
     std::unique_ptr<BinaryInput> down;
-    std::unique_ptr<BinaryInput> fast;
+    std::unique_ptr<BinaryInput> sprint;
 
     std::unique_ptr<AnalogInput> lookX;
     std::unique_ptr<AnalogInput> lookY;
-    std::unique_ptr<BinaryInput> lookToggle;
+
+    std::unique_ptr<BinaryInput> interact;
 };
 }
 

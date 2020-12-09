@@ -29,6 +29,8 @@ struct Mesh {
     };
 
     std::vector<Primitive> primitives;
+
+    void draw(const glw::ShaderProgram& shader) const;
 };
 
 struct Skybox {
@@ -45,6 +47,9 @@ struct Skybox {
 namespace comp {
 // This thing is not data driven at all
 using Mesh = std::shared_ptr<Mesh>;
+
+struct RenderHighlight {
+};
 }
 
 namespace AttributeLocations {
