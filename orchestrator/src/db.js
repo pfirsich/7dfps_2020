@@ -29,7 +29,7 @@ function query(...args) {
 async function countVms() {
   const res = await query("SELECT COUNT(*) as vmCount FROM vms");
 
-  return res.rows[0].vmcount;
+  return Number(res.rows[0].vmcount);
 }
 
 async function getFreeVms({ region, maxGamesOnVm }) {
@@ -37,7 +37,7 @@ async function getFreeVms({ region, maxGamesOnVm }) {
   const res = await query(
     `SELECT vms.vmid, vms.region, COUNT(games.gamecode) AS gamesCount
         FROM vms
-        JOIN games ON vms.vmId=games.vmId
+        LEFT JOIN games ON vms.vmId=games.vmId
         WHERE region = $1
         GROUP BY vms.vmid
         HAVING COUNT(games.gamecode) < $2

@@ -13,11 +13,13 @@ CREATE TABLE games (
     -- NOTE: Game id always unique, game code is only hopefully unique among running games
     gameId INT GENERATED ALWAYS AS IDENTITY,
     gameCode varchar(16),
-    host text,
-    port int,
+    creatorIpAddress TEXT,
+    host TEXT,
+    port INT,
     vmId INT,
     -- TODO: add:
     -- state: starting, running, over
+    -- version
     -- timeStarted
     -- timeEnded
     PRIMARY KEY(gameId),

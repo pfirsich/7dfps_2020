@@ -4,6 +4,33 @@ const DigitalOcean = require("do-wrapper").default;
 
 const doClient = new DigitalOcean(process.env.DO_ACCESS_TOKEN);
 
+async function sleep(time) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, time);
+  });
+}
+
+async function waitForAction(actionId) {
+  let trys = 0;
+
+  while (true) {
+    await sleep(1000);
+
+    const { action } = await doClient.actions.getById(actionId);
+    trys++;
+
+    if (action.status === "completed") {
+      return action;
+    }
+
+    if (action.status !== "in-progress") {
+      return new Error("Failed to create droplet");
+    }
+
+    console.log("Waiting for action: " + actionId);
+  }
+}
+
 async function startVm({ region }) {
   const vm = await db.addVm({ region });
 
@@ -21,22 +48,23 @@ async function startVm({ region }) {
     tags: [...config.vmTags, `vmId:${vm.vmId}`],
   });
 
-  console.log(response);
-
-  // response.droplet.name
-  // response.droplet.id
-  // response.droplet.created_at
-
-  console.log(response.links.actions);
+  await waitForAction(response.links.actions[0].id);
 
   const { droplet } = await doClient.droplets.getById(response.droplet.id);
 
   const publicNetwork = droplet.networks.v4.find((n) => n.type === "public");
   const ipv4Address = publicNetwork.ip_address;
 
-  console.log(droplet.networks);
+  console.log("ipv4Address:", ipv4Address);
 
-  return vm;
+  // TODO: Write to DB
+  return {
+    vm,
+    name: droplet.name,
+    id: droplet.id,
+    createdAt: droplet.created_at,
+    ipv4Address,
+  };
 }
 
 // TODO: this should all be one transaction....
@@ -50,7 +78,7 @@ async function getOrCreateVm({ region }) {
     return freeVms[0];
   }
 
-  const vmCount = db.countVms();
+  const vmCount = await db.countVms();
 
   if (vmCount >= config.maxVms) {
     const error = new Error("Max VM count reached");
