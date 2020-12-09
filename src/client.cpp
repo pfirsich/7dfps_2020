@@ -5,6 +5,11 @@
 #include "graphics.hpp"
 #include "physics.hpp"
 
+namespace {
+static bool debugCollisionGeometry = false;
+static bool debugRaycast = false;
+}
+
 bool Client::run(const std::string& host, Port port)
 {
     assert(!started_);
@@ -13,6 +18,7 @@ bool Client::run(const std::string& host, Port port)
     glwx::Window::Properties props;
     props.msaaSamples = 8;
     window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
+    window_.maximize();
     resized(window_.getSize().x, window_.getSize().y);
     glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);
@@ -41,10 +47,19 @@ bool Client::run(const std::string& host, Port port)
         return false;
     }
 
+    const auto hitMarkerMesh = loadMesh("media/marker.glb");
+    if (!hitMarkerMesh) {
+        fmt::print("Could not load 'media/marker.glb\n");
+        return false;
+    }
+    hitMarker_ = world_.createEntity();
+    hitMarker_.add<comp::Transform>();
+    hitMarker_.add<comp::Mesh>(hitMarkerMesh);
+
     player_ = world_.createEntity();
     player_.add<comp::Transform>();
     player_.add<comp::Velocity>();
-    player_.add<comp::CircleCollider>(comp::CircleCollider { playerRadius });
+    player_.add<comp::CylinderCollider>(comp::CylinderCollider { playerRadius, cameraOffsetY });
     player_.add<comp::PlayerInputController>(SDL_SCANCODE_W, SDL_SCANCODE_S, SDL_SCANCODE_A,
         SDL_SCANCODE_D, SDL_SCANCODE_R, SDL_SCANCODE_F, SDL_SCANCODE_LSHIFT, MouseButtonInput(1));
 
@@ -140,10 +155,20 @@ void Client::processSdlEvents()
             running_ = false;
             break;
         case SDL_KEYDOWN:
-            switch (event.key.keysym.sym) {
+            switch (event.key.keysym.scancode) {
 #ifndef NDEBUG
-            case SDLK_ESCAPE:
+            case SDL_SCANCODE_ESCAPE:
                 running_ = false;
+                break;
+            case SDL_SCANCODE_C:
+                if (event.key.keysym.mod & KMOD_CTRL)
+                    debugCollisionGeometry = !debugCollisionGeometry;
+                break;
+            case SDL_SCANCODE_R:
+                if (event.key.keysym.mod & KMOD_CTRL)
+                    debugRaycast = !debugRaycast;
+                break;
+            default:
                 break;
 #endif
             }
@@ -173,6 +198,21 @@ void Client::update(float dt)
     InputManager::instance().update();
     playerControlSystem(world_, dt);
     integrationSystem(world_, dt);
+
+    const auto& trafo = player_.get<comp::Transform>();
+    const auto rayOrigin = trafo.getPosition() + glm::vec3(0.0f, cameraOffsetY, 0.0f);
+    const auto rayDir = trafo.getForward();
+    const auto hit = castRay(world_, rayOrigin, rayDir);
+    if (debugRaycast && hit) {
+        static ecs::EntityHandle lastHit;
+        if (hit->entity != lastHit) {
+            fmt::print("Hit entity '{}' at t = {}\n", comp::Name::get(hit->entity), hit->t);
+            lastHit = hit->entity;
+        }
+        hitMarker_.get<comp::Transform>().setPosition(rayOrigin + rayDir * hit->t);
+    } else {
+        hitMarker_.get<comp::Transform>().setPosition(glm::vec3(0.0f, -1000.0f, 0.0f));
+    }
 }
 
 void Client::sendUpdate()
@@ -216,7 +256,7 @@ void Client::addPlayer(PlayerId id)
     auto player = world_.createEntity();
     player.add<comp::Hierarchy>();
     player.add<comp::Transform>();
-    player.add<comp::CircleCollider>(comp::CircleCollider { playerRadius });
+    player.add<comp::CylinderCollider>(comp::CylinderCollider { playerRadius, cameraOffsetY });
     player.add<comp::Mesh>(playerMesh_);
     players_.emplace(id, player);
 }
@@ -274,9 +314,13 @@ void Client::draw()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     auto cameraTransform = player_.get<comp::Transform>();
-    cameraTransform.move(glm::vec3(0.0f, 3.5f, 0.0f));
-    renderSystem(world_, projection_, cameraTransform);
-    skybox_->draw(projection_, cameraTransform);
+    cameraTransform.move(glm::vec3(0.0f, cameraOffsetY, 0.0f));
+    if (debugCollisionGeometry) {
+        collisionRenderSystem(world_, projection_, cameraTransform);
+    } else {
+        renderSystem(world_, projection_, cameraTransform);
+        skybox_->draw(projection_, cameraTransform);
+    }
 
     window_.swap();
 }

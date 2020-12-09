@@ -58,5 +58,8 @@ constexpr size_t Joints0 = 6;
 constexpr size_t Weights0 = 7;
 }
 
+void collisionRenderSystem(
+    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform);
+
 void renderSystem(
     ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform);

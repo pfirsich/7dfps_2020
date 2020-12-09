@@ -158,7 +158,7 @@ void Server::findSpawnPosition(Player& player)
         glm::vec3(5.0f, 0.0f, -5.0f),
     };
     auto& trafo = player.entity.get<comp::Transform>();
-    const auto& collider = player.entity.get<comp::CircleCollider>();
+    const auto& collider = player.entity.get<comp::CylinderCollider>();
     for (const auto& pos : spawnPoints) {
         trafo.setPosition(pos);
         if (!findFirstCollision(world_, player.entity, trafo, collider)) {
@@ -176,7 +176,8 @@ void Server::connectPeer(ENetPeer* peer)
     player.entity = world_.createEntity();
     player.entity.add<comp::Name>(comp::Name { "player_" + std::to_string(player.id) });
     player.entity.add<comp::NetworkPlayer>();
-    player.entity.add<comp::CircleCollider>(comp::CircleCollider { playerRadius });
+    player.entity.add<comp::CylinderCollider>(
+        comp::CylinderCollider { playerRadius, cameraOffsetY });
     const auto& trafo = player.entity.add<comp::Transform>();
     world_.flush();
     findSpawnPosition(player);

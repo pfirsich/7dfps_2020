@@ -35,8 +35,7 @@ const auto vert = R"(
 const auto frag = R"(
     #version 330 core
 
-    const float ambient = 0.8;
-    const float lightIntensity = 0.2;
+    uniform float ambientBlend = 0.8;
 
     uniform vec4 baseColorFactor;
     uniform sampler2D baseColorTexture;
@@ -50,7 +49,7 @@ const auto frag = R"(
     void main() {
         vec4 base = baseColorFactor * texture(baseColorTexture, texCoords);
         float nDotL = max(dot(lightDir, normalize(normal)), 0.0);
-        fragColor = vec4(base.rgb * ambient + base.rgb * nDotL * lightIntensity, base.a);
+        fragColor = vec4(base.rgb * mix(nDotL, 1.0, ambientBlend), base.a);
     }
 )"sv;
 
@@ -134,24 +133,38 @@ std::shared_ptr<Material> Material::getDefaultMaterial()
     return defaultMaterial;
 }
 
+namespace {
+glw::ShaderProgram& getShader()
+{
+    static glw::ShaderProgram shader = glwx::makeShaderProgram(vert, frag).value();
+    return shader;
+}
+}
+
 void renderSystem(
     ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform)
 {
-    static glw::ShaderProgram shader = glwx::makeShaderProgram(vert, frag).value();
+    const auto& shader = getShader();
     shader.bind();
     shader.setUniform("lightDir", glm::vec3(0.0f, 0.0f, 1.0f));
 
     shader.setUniform("projectionMatrix", projection);
     const auto view = glm::inverse(cameraTransform.getMatrix());
     shader.setUniform("viewMatrix", view);
+    shader.setUniform("ambientBlend", 0.8f);
 
-    world.forEachEntity<const comp::Hierarchy, const comp::Transform, const comp::Mesh>(
-        [&view](const comp::Hierarchy& hierarchy, const comp::Transform& transform,
-            const comp::Mesh& mesh) {
-            auto parent = hierarchy.parent;
-            const auto model = parent && parent.has<comp::Transform>()
-                ? parent.get<comp::Transform>().getMatrix() * transform.getMatrix()
-                : transform.getMatrix();
+    world.forEachEntity<const comp::Transform, const comp::Mesh>(
+        [&view, &shader](
+            ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
+            const auto model = [&]() {
+                if (entity.has<comp::Hierarchy>()) {
+                    auto parent = entity.get<comp::Hierarchy>().parent;
+                    if (parent && parent.has<comp::Transform>()) {
+                        return parent.get<comp::Transform>().getMatrix() * transform.getMatrix();
+                    }
+                }
+                return transform.getMatrix();
+            }();
 
             shader.setUniform("modelMatrix", model);
             const auto modelView = view * model;
@@ -166,5 +179,49 @@ void renderSystem(
                 shader.setUniform("baseColorFactor", material.baseColor);
                 prim.primitive.draw();
             }
+        });
+}
+
+struct CollisionBoxMesh {
+    CollisionBoxMesh()
+    {
+        glw::VertexFormat vfmt;
+        vfmt.add(AttributeLocations::Position, 3, glw::AttributeType::F32);
+        vfmt.add(AttributeLocations::Normal, 3, glw::AttributeType::F32);
+        vfmt.add(AttributeLocations::TexCoord0, 2, glw::AttributeType::U16, true);
+        mesh = glwx::makeBoxMesh(vfmt,
+            { AttributeLocations::Position, AttributeLocations::TexCoord0,
+                AttributeLocations::Normal },
+            2.0f, 2.0f, 2.0f);
+    }
+
+    glwx::Mesh mesh;
+};
+
+void collisionRenderSystem(
+    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform)
+{
+    const auto& shader = getShader();
+    static const CollisionBoxMesh box;
+    static const auto texture = glwx::makeTexture2D(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+    shader.setUniform("projectionMatrix", projection);
+    const auto view = glm::inverse(cameraTransform.getMatrix());
+    shader.setUniform("viewMatrix", view);
+
+    texture.bind(0);
+    shader.setUniform("baseColorTexture", 0);
+    shader.setUniform("baseColorFactor", glm::vec4(1.0f));
+    shader.setUniform("ambientBlend", 0.2f);
+
+    world.forEachEntity<const comp::Transform, const comp::BoxCollider>(
+        [&view, &shader](const comp::Transform& transform, const comp::BoxCollider& collider) {
+            const auto model
+                = transform.getMatrix() * glm::scale(glm::mat4(1.0f), collider.halfExtents);
+            shader.setUniform("modelMatrix", model);
+            const auto modelView = view * model;
+            const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
+            shader.setUniform("normalMatrix", normal);
+            box.mesh.draw();
         });
 }

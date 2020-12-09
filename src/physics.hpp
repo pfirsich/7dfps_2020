@@ -16,12 +16,13 @@ struct Velocity {
     glm::vec3 value { 0.0f, 0.0f, 0.0f };
 };
 
-struct CircleCollider {
+struct CylinderCollider {
     float radius;
+    float height;
 };
 
-struct RectangleCollider {
-    glm::vec2 halfExtents;
+struct BoxCollider {
+    glm::vec3 halfExtents;
 };
 
 struct PlayerInputController {
@@ -61,7 +62,15 @@ struct CollisionResult {
 };
 
 std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::EntityHandle entity,
-    comp::Transform& transform, const comp::CircleCollider& collider);
+    comp::Transform& transform, const comp::CylinderCollider& collider);
+
+struct RayCastHit {
+    ecs::EntityHandle entity;
+    float t;
+};
+
+std::optional<RayCastHit> castRay(
+    ecs::World& world, const glm::vec3& rayOrigin, const glm::vec3& rayDir);
 
 void integrationSystem(ecs::World& world, float dt);
 

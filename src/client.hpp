@@ -57,6 +57,7 @@ private:
     std::shared_ptr<Mesh> playerMesh_;
     std::unique_ptr<Skybox> skybox_;
     ecs::EntityHandle player_;
+    ecs::EntityHandle hitMarker_;
     glm::mat4 projection_;
     float time_ = 0.0f;
     uint32_t frameCounter_ = 0;

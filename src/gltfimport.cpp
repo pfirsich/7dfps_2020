@@ -193,10 +193,19 @@ struct GltfImportCache {
         }
         if (node.name && node.name->find("collider") == 0) {
             assert(!node.parent);
+            const auto& mesh = gltfFile.meshes[node.mesh.value()];
+            assert(mesh.primitives.size() == 1);
+            assert(mesh.primitives[0].attributes[0].id == "POSITION");
+            const auto& accessor = gltfFile.accessors[mesh.primitives[0].attributes[0].accessor];
+            const auto min = makeGlm<glm::vec3>(accessor.min);
+            const auto max = makeGlm<glm::vec3>(accessor.max);
+            const auto offset = (max + min) / 2.0f;
+            const auto scale = (max - min) / 2.0f;
             const auto trs = std::get<gltf::Node::Trs>(node.transform);
-            entity.add<comp::Transform>().setPosition(makeGlm<glm::vec3>(trs.translation));
-            entity.add<comp::RectangleCollider>().halfExtents
-                = glm::vec2(trs.scale[0], trs.scale[2]);
+            const auto trsScale = makeGlm<glm::vec3>(trs.scale);
+            entity.add<comp::Transform>().setPosition(
+                makeGlm<glm::vec3>(trs.translation) + offset * trsScale);
+            entity.add<comp::BoxCollider>().halfExtents = trsScale * scale;
         } else {
             entity.add<comp::Hierarchy>();
             entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));

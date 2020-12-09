@@ -3,34 +3,42 @@
 #include "components.hpp"
 
 namespace {
-
-std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo,
-    const comp::CircleCollider& circle, const comp::Transform& rectTrafo,
-    const comp::RectangleCollider& rect)
+bool intervalsOverlap(float minA, float maxA, float minB, float maxB)
 {
+    return minA <= maxB && minB < maxA;
+}
+
+std::optional<CollisionResult> intersect(const glm::vec3& cylPos, const comp::CylinderCollider& cyl,
+    const glm::vec3& boxPos, const comp::BoxCollider& box)
+{
+    const auto boxMin = boxPos - box.halfExtents;
+    const auto boxMax = boxPos + box.halfExtents;
+    if (!intervalsOverlap(cylPos.y, cylPos.y + cyl.height, boxMin.y, boxMax.y))
+        return std::nullopt;
+
     // circle position clamped into rect
-    const auto circlePos = glm::vec2(circleTrafo.getPosition().x, circleTrafo.getPosition().z);
-    const auto rectPos = glm::vec2(rectTrafo.getPosition().x, rectTrafo.getPosition().z);
-    const auto clamped = glm::vec2(
-        std::clamp(circlePos.x, rectPos.x - rect.halfExtents.x, rectPos.x + rect.halfExtents.x),
-        std::clamp(circlePos.y, rectPos.y - rect.halfExtents.y, rectPos.y + rect.halfExtents.y));
-    const auto rel = circlePos - clamped;
+    const auto clamped = glm::clamp(cylPos, boxMin, boxMax);
+    auto rel = cylPos - clamped;
+    rel.y = 0.0f;
     const auto len = glm::length(rel);
-    if (len >= circle.radius)
+    if (len >= cyl.radius)
         return std::nullopt;
 
     const auto normal = rel / len;
-    return CollisionResult { glm::vec3(normal.x, 0.0f, normal.y), circle.radius - len };
+    return CollisionResult { glm::vec3(normal.x, 0.0f, normal.z), cyl.radius - len };
 }
 
-std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo1,
-    const comp::CircleCollider& circle1, const comp::Transform& circleTrafo2,
-    const comp::CircleCollider& circle2)
+std::optional<CollisionResult> intersect(const glm::vec3& circlePos1,
+    const comp::CylinderCollider& circle1, const glm::vec3& circlePos2,
+    const comp::CylinderCollider& circle2)
 {
-    const auto circlePos1 = glm::vec2(circleTrafo1.getPosition().x, circleTrafo1.getPosition().z);
-    const auto circlePos2 = glm::vec2(circleTrafo2.getPosition().x, circleTrafo2.getPosition().z);
+    if (!intervalsOverlap(circlePos1.y, circlePos1.y + circle1.height, circlePos2.y,
+            circlePos2.y + circle2.height))
+        return std::nullopt;
+
     const auto radiusSum = circle1.radius + circle2.radius;
-    const auto rel = circlePos1 - circlePos2;
+    auto rel = circlePos1 - circlePos2;
+    rel.y = 0.0f;
     const auto dist = glm::length(rel);
     if (dist > radiusSum)
         return std::nullopt;
@@ -42,11 +50,77 @@ std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo1,
         return CollisionResult { glm::vec3(0.0f), 0.0f };
 
     const auto normal = rel / dist;
-    return CollisionResult { glm::vec3(normal.x, 0.0f, normal.y), radiusSum - dist };
+    return CollisionResult { glm::vec3(normal.x, 0.0f, normal.z), radiusSum - dist };
+}
 }
 
-void integrateCircleColliders(ecs::World& world, ecs::EntityHandle entity, comp::Velocity& velocity,
-    comp::Transform& transform, const comp::CircleCollider& collider, float dt)
+std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::EntityHandle entity,
+    comp::Transform& transform, const comp::CylinderCollider& collider)
+{
+    std::optional<CollisionResult> maxDepthResult;
+    // We use the maximum penetration depth as a heuristic to find the first collision (in time),
+    // because (intuitively) the longer ago a collision was in the past, the further an object can
+    // have penetrated another.
+    auto l = [&](ecs::EntityHandle other, const comp::Transform& otherTransform,
+                 const auto& otherCollider) {
+        if (entity == other)
+            return;
+        const auto col = intersect(
+            transform.getPosition(), collider, otherTransform.getPosition(), otherCollider);
+        if (!col)
+            return;
+        if (!maxDepthResult || col->penetrationDepth > maxDepthResult->penetrationDepth) {
+            maxDepthResult = col;
+        }
+    };
+    world.forEachEntity<const comp::Transform, const comp::CylinderCollider>(l);
+    world.forEachEntity<const comp::Transform, const comp::BoxCollider>(l);
+    return maxDepthResult;
+}
+
+namespace {
+// https://medium.com/@bromanz/another-view-on-the-classic-ray-aabb-intersection-algorithm-for-bvh-traversal-41125138b525
+// https://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms
+std::optional<float> intersectRayAabb(
+    const glm::vec3& rayOrigin, const glm::vec3& rayDir, const glwx::Aabb& box)
+{
+    const auto t0 = (box.min - rayOrigin) / rayDir;
+    const auto t1 = (box.max - rayOrigin) / rayDir;
+    const auto tmin = glm::min(t0, t1);
+    const auto tmax = glm::max(t0, t1);
+    const auto min = std::max({ tmin.x, tmin.y, tmin.z });
+    const auto max = std::min({ tmax.x, tmax.y, tmax.z });
+    if (max < 0.0f) // aabb intersects "behind" the ray
+        return std::nullopt;
+    if (min > max) // no intersection
+        return std::nullopt;
+    return min;
+}
+}
+
+std::optional<RayCastHit> castRay(
+    ecs::World& world, const glm::vec3& rayOrigin, const glm::vec3& rayDir)
+{
+    std::optional<RayCastHit> hit;
+    world.forEachEntity<const comp::Transform, const comp::BoxCollider>(
+        [&](ecs::EntityHandle entity, const comp::Transform& trafo,
+            const comp::BoxCollider& collider) {
+            const auto aabb = glwx::Aabb {
+                trafo.getPosition() - collider.halfExtents,
+                trafo.getPosition() + collider.halfExtents,
+            };
+            const auto t = intersectRayAabb(rayOrigin, rayDir, aabb);
+            if (t && (!hit || *t < hit->t)) {
+                hit = RayCastHit { entity, *t };
+            }
+        });
+    return hit;
+}
+
+namespace {
+void integrateCylinderColliders(ecs::World& world, ecs::EntityHandle entity,
+    comp::Velocity& velocity, comp::Transform& transform, const comp::CylinderCollider& collider,
+    float dt)
 {
     transform.move(velocity.value * dt);
     static constexpr size_t maxCollisionCount = 10;
@@ -64,36 +138,13 @@ void integrateCircleColliders(ecs::World& world, ecs::EntityHandle entity, comp:
 }
 }
 
-std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::EntityHandle entity,
-    comp::Transform& transform, const comp::CircleCollider& collider)
-{
-    std::optional<CollisionResult> maxDepthResult;
-    // We use the maximum penetration depth as a heuristic to find the first collision (in time),
-    // because (intuitively) the longer ago a collision was in the past, the further an object can
-    // have penetrated another.
-    auto l = [&](ecs::EntityHandle other, const comp::Transform& otherTransform,
-                 const auto& otherCollider) {
-        if (entity == other)
-            return;
-        const auto col = intersect(transform, collider, otherTransform, otherCollider);
-        if (!col)
-            return;
-        if (!maxDepthResult || col->penetrationDepth > maxDepthResult->penetrationDepth) {
-            maxDepthResult = col;
-        }
-    };
-    world.forEachEntity<const comp::Transform, const comp::CircleCollider>(l);
-    world.forEachEntity<const comp::Transform, const comp::RectangleCollider>(l);
-    return maxDepthResult;
-}
-
 void integrationSystem(ecs::World& world, float dt)
 {
     // velocity will prevent this from being executed for non-local players
-    world.forEachEntity<comp::Velocity, comp::Transform, const comp::CircleCollider>(
+    world.forEachEntity<comp::Velocity, comp::Transform, const comp::CylinderCollider>(
         [&world, dt](ecs::EntityHandle entity, comp::Velocity& velocity, comp::Transform& transform,
-            const comp::CircleCollider& collider) {
-            integrateCircleColliders(world, entity, velocity, transform, collider, dt);
+            const comp::CylinderCollider& collider) {
+            integrateCylinderColliders(world, entity, velocity, transform, collider, dt);
         });
 }
 
