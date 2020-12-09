@@ -64,6 +64,8 @@ public:
 
     ComponentType& get(EntityId entityId);
 
+    ComponentType* getPtr(EntityId entityId);
+
     void remove(EntityId entityId) override;
 
     static constexpr size_t DefaultBlockSize = 64;
@@ -146,9 +148,18 @@ bool ComponentPool<ComponentType>::has(EntityId entityId) const
 template <typename ComponentType>
 ComponentType& ComponentPool<ComponentType>::get(EntityId entityId)
 {
-    assert(has(entityId));
+    const auto ptr = getPtr(entityId);
+    assert(ptr);
+    return *ptr;
+}
+
+template <typename ComponentType>
+ComponentType* ComponentPool<ComponentType>::getPtr(EntityId entityId)
+{
+    if (!has(entityId))
+        return nullptr;
     const auto [blockIndex, componentIndex] = getIndices(entityId);
-    return *getPointer(blockIndex, componentIndex);
+    return getPointer(blockIndex, componentIndex);
 }
 
 template <typename ComponentType>
@@ -271,6 +282,9 @@ public:
     ComponentType& getComponent(EntityId entityId);
 
     template <typename ComponentType>
+    ComponentType* getComponentPtr(EntityId entityId);
+
+    template <typename ComponentType>
     void removeComponent(EntityId entityId);
 
     bool isValid(EntityId entityId) const
@@ -324,6 +338,9 @@ public:
 
     template <typename ComponentType>
     ComponentType& get();
+
+    template <typename ComponentType>
+    ComponentType* getPtr();
 
     template <typename ComponentType>
     ComponentType& getOrAdd();
@@ -389,7 +406,15 @@ ComponentType& World::getComponent(EntityId entityId)
     // make getPool not alloc, so we don't have to protect getComponent with a mutex (later)
     // this should never trigger an allocation anyways, since we assert hasComponent above,
     // so this is just an extra safety measure
-    return getPool<typename std::remove_const<ComponentType>::type>(false).get(entityId);
+    auto& pool = getPool<typename std::remove_const_t<ComponentType>>(false);
+    return pool.get(entityId);
+}
+
+template <typename ComponentType>
+ComponentType* World::getComponentPtr(EntityId entityId)
+{
+    auto& pool = getPool<typename std::remove_const_t<ComponentType>>(false);
+    return pool.getPtr(entityId);
 }
 
 template <typename ComponentType>
@@ -457,6 +482,12 @@ template <typename ComponentType>
 ComponentType& EntityHandle::get()
 {
     return world_->getComponent<ComponentType>(id_);
+}
+
+template <typename ComponentType>
+ComponentType* EntityHandle::getPtr()
+{
+    return world_->getComponentPtr<ComponentType>(id_);
 }
 
 template <typename ComponentType>

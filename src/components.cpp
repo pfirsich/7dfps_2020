@@ -44,3 +44,11 @@ void comp::Hierarchy::setParent(ecs::EntityHandle& entity, ecs::EntityHandle& pa
     }
     entityHierarchy.nextSibling = ecs::EntityHandle();
 }
+
+std::string comp::Name::get(ecs::EntityHandle entity)
+{
+    const auto name = entity.getPtr<Name>();
+    if (name)
+        return name->value;
+    return "<unknown>";
+}

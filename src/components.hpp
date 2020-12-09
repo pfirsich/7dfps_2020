@@ -17,5 +17,7 @@ struct Hierarchy {
 
 struct Name {
     std::string value;
+
+    static std::string get(ecs::EntityHandle entity);
 };
 }
