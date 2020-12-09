@@ -109,7 +109,7 @@ void playerControlSystem(ecs::World& world, float dt)
         [dt](comp::Transform& transform, comp::Velocity& velocity,
             const comp::PlayerInputController& ctrl) {
             if (ctrl.lookToggle->getState()) {
-                const auto sensitivity = 0.01f;
+                const auto sensitivity = 0.0025f;
                 const auto look
                     = glm::vec2(ctrl.lookX->getDelta(), ctrl.lookY->getDelta()) * sensitivity;
                 transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
