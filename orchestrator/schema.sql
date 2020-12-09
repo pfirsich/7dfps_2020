@@ -3,7 +3,7 @@ CREATE TABLE vms (
     region VARCHAR(16),
     -- TODO: add:
     -- state: provisioning, starting, running, shutdown
-    -- host
+    -- ipv4Address
     -- timeStarted
     -- timeEnded
     PRIMARY KEY(vmId)

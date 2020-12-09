@@ -1,6 +1,9 @@
 module.exports = {
   maxVms: 8,
-  maxGamesOnVm: 4,
+
+  // TOOD: set to 4 or something
+  maxGamesOnVm: 1,
+
   gameCodeSize: 2 ** 24,
 
   vmSize: "s-1vcpu-1gb",

@@ -1,8 +1,13 @@
 const db = require("./db");
+const ssh = require("./ssh");
 const config = require("./config");
 const DigitalOcean = require("do-wrapper").default;
 
 const doClient = new DigitalOcean(process.env.DO_ACCESS_TOKEN);
+
+function randomRange(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
 
 async function sleep(time) {
   return new Promise((resolve) => {
@@ -10,16 +15,34 @@ async function sleep(time) {
   });
 }
 
+function initScript(vm) {
+  return `
+  mkdir -p /var/log/7dfps/;
+  mkdir -p /usr/share/7dfps/;
+
+  echo ${vm.vmId} > /usr/share/7dfps/vmId;
+
+  yum install -y nc docker | tee /var/log/7dfps/install.log;
+  `;
+}
+
 async function waitForAction(actionId) {
-  let trys = 0;
+  const waitTimeSec = 5;
+  const maxTries = 50;
+  let tries = 0;
 
   while (true) {
-    await sleep(1000);
+    tries++;
+    if (tries >= maxTries) {
+      throw new Error(`Too many tries waiting for action ${tries}`);
+    }
+
+    await sleep(waitTimeSec * 1000);
 
     const { action } = await doClient.actions.getById(actionId);
-    trys++;
 
     if (action.status === "completed") {
+      console.log(`Completed action: ${actionId}, tries: ${tries}`);
       return action;
     }
 
@@ -27,39 +50,50 @@ async function waitForAction(actionId) {
       return new Error("Failed to create droplet");
     }
 
-    console.log("Waiting for action: " + actionId);
+    console.log(
+      `Waiting for action (${waitTimeSec} sec): ${actionId}, tries: ${tries}`
+    );
   }
 }
 
 async function startVm({ region }) {
   const vm = await db.addVm({ region });
 
+  const name = "7dfps-game-vm-" + vm.vmId;
+
+  console.log(`Starting droplet: ${name}`);
+
   const response = await doClient.droplets.create({
-    name: "7dfps-game-vm-" + vm.vmId,
+    name,
     region,
     size: config.vmSize,
     image: config.vmImage,
     ssh_keys: config.vmSshKeys,
     backups: false,
     ipv6: true,
-    user_data: `echo "Hi, I'm a game server, VM ID: ${vm.vmId}"`,
+    user_data: initScript(vm),
     monitoring: true,
     volumes: null,
     tags: [...config.vmTags, `vmId:${vm.vmId}`],
   });
 
-  await waitForAction(response.links.actions[0].id);
+  const actionId = response.links.actions[0].id;
+
+  console.log(`Droplet creation ${name}, Action ID: ${actionId}`);
+
+  await waitForAction(actionId);
 
   const { droplet } = await doClient.droplets.getById(response.droplet.id);
 
   const publicNetwork = droplet.networks.v4.find((n) => n.type === "public");
   const ipv4Address = publicNetwork.ip_address;
 
-  console.log("ipv4Address:", ipv4Address);
+  console.log("Droplet created with IP:", ipv4Address);
 
-  // TODO: Write to DB
   return {
-    vm,
+    ...vm,
+
+    // TODO: Write this to DB
     name: droplet.name,
     id: droplet.id,
     createdAt: droplet.created_at,
@@ -75,6 +109,7 @@ async function getOrCreateVm({ region }) {
   });
 
   if (freeVms.length > 0) {
+    console.log(`Reusing VM: ${freeVms[0].vmId}`);
     return freeVms[0];
   }
 
@@ -96,12 +131,24 @@ async function startGame({ region }) {
 
   const vm = await getOrCreateVm({ region });
 
-  // TODO: start game
+  const port = randomRange(32768, 60999);
+  const host = vm.ipv4Address || "207.154.216.224";
+
+  if (!host) {
+    throw new Error("No IP for vm");
+  }
+
+  await ssh.startGameProcess({
+    gameCode,
+    host,
+    port,
+    vmId: vm.vmId,
+  });
 
   const gameInfo = await db.addGame({
     gameCode,
-    host: "foo.example.com",
-    port: Math.floor(Math.random() * 9000) + 1000,
+    host,
+    port,
     vmId: vm.vmId,
   });
 

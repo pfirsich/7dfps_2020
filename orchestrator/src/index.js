@@ -57,7 +57,7 @@ app.post("/games", async (req, res) => {
       });
     } else {
       res.status(500).json({
-        msg: "Internal server error",
+        msg: `Internal server error: ${error.message}`,
       });
     }
   }
