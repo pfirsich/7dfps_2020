@@ -70,7 +70,7 @@ bool Client::run(const std::string& host, Port port)
         fmt::print(stderr, "Could not connect.\n");
         return false;
     }
-    fmt::print("Connecting to {}:{}...\n", enet::getIp(*addr), addr->port);
+    fmt::print("Connecting to {}:{}..\n", enet::getIp(*addr), addr->port);
 
     // TODO: MAKE THIS NOT BLOCK
     const auto event = host_.service(5000);

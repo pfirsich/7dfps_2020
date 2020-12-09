@@ -99,8 +99,12 @@ WriteBuffer serializeMessage(uint32_t frameNumber, Message<MsgType> message)
 {
     WriteBuffer buffer(1024);
     CommonMessageHeader header { static_cast<uint8_t>(MsgType), frameNumber };
-    assert(serialize(buffer, header));
-    assert(serialize(buffer, message));
+    if (!serialize(buffer, header)) {
+        assert(false);
+    }
+    if (!serialize(buffer, message)) {
+        assert(false);
+    }
     return buffer;
 }
 
@@ -109,8 +113,13 @@ bool sendMessage(
     ENetPeer* peer, Channel channel, uint32_t frameNumber, const Message<MsgType>& message)
 {
     const auto buffer = serializeMessage(frameNumber, message);
-    const auto res = enet_peer_send(peer, static_cast<uint8_t>(channel),
-        enet::Packet(buffer.getData(), buffer.getSize(), getChannelFlags(channel)).release());
+    const auto packet
+        = enet_packet_create(buffer.getData(), buffer.getSize(), getChannelFlags(channel));
+    if (!packet) {
+        fmt::print(stderr, "Could not create packet\n");
+        return false;
+    }
+    const auto res = enet_peer_send(peer, static_cast<uint8_t>(channel), packet);
     if (res < 0) {
         fmt::print(stderr, "Error sending message of type {}\n", MsgType);
         return false;

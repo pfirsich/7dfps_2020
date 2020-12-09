@@ -24,3 +24,5 @@ std::optional<T> parseInt(const std::string& str, int base = 10)
         return std::nullopt;
     }
 }
+
+std::string hexStream(const uint8_t* data, size_t len);
