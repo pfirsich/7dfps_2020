@@ -9,6 +9,10 @@
 
 static constexpr size_t maxPlayers = 4;
 static constexpr uint32_t protocolVersion = 1;
+static constexpr size_t tickRate = 60;
+
+using PlayerId = uint32_t;
+static constexpr auto InvalidPlayerId = std::numeric_limits<PlayerId>::max();
 
 enum class Channel : uint8_t {
     Unreliable = 0,
@@ -18,8 +22,20 @@ enum class Channel : uint8_t {
 
 uint32_t getChannelFlags(Channel channel);
 
+struct CommonMessageHeader {
+    uint8_t messageType;
+    uint32_t frameNumber; // will not wrap in 130 years (60 fps)
+
+    SERIALIZE()
+    {
+        FIELD(messageType);
+        FIELD(frameNumber);
+        SERIALIZE_END;
+    }
+};
+
 enum class MessageType : uint8_t {
-    Hello = 0,
+    ServerHello = 0,
     ClientMoveUpdate,
     ServerPlayerStateUpdate,
 };
@@ -28,24 +44,26 @@ template <MessageType MsgType>
 struct Message;
 
 template <>
-struct Message<MessageType::Hello> {
-    uint32_t guid;
+struct Message<MessageType::ServerHello> {
+    uint32_t playerId;
+    glm::vec3 spawnPos;
 
     SERIALIZE()
     {
-        FIELD(guid);
+        FIELD(playerId);
+        FIELD(spawnPos);
         SERIALIZE_END;
     }
 };
 
 template <>
 struct Message<MessageType::ClientMoveUpdate> {
-    uint8_t inputs; // bitmask
+    glm::vec3 position;
     glm::quat orientation;
 
     SERIALIZE()
     {
-        FIELD(inputs);
+        FIELD(position);
         FIELD(orientation);
         SERIALIZE_END;
     }
@@ -54,13 +72,13 @@ struct Message<MessageType::ClientMoveUpdate> {
 template <>
 struct Message<MessageType::ServerPlayerStateUpdate> {
     struct PlayerState {
-        uint32_t guid;
+        uint32_t id;
         glm::vec3 position;
         glm::quat orientation;
 
         SERIALIZE()
         {
-            FIELD(guid);
+            FIELD(id);
             FIELD(position);
             FIELD(orientation);
             SERIALIZE_END;
@@ -77,21 +95,25 @@ struct Message<MessageType::ServerPlayerStateUpdate> {
 };
 
 template <MessageType MsgType>
-std::optional<Message<MsgType>> deserializeMessage(const enet::Packet& packet)
+WriteBuffer serializeMessage(uint32_t frameNumber, Message<MsgType> message)
 {
-    ReadBuffer buf(packet.getData<uint8_t>(), packet.getSize());
-    Message<MsgType> message;
-    if (!deserialize(buf, message)) {
-        fmt::print(stderr, "Could not deserialize message of type {}", static_cast<int>(MsgType));
-        return std::nullopt;
-    }
-    return message;
+    WriteBuffer buffer(1024);
+    CommonMessageHeader header { static_cast<uint8_t>(MsgType), frameNumber };
+    assert(serialize(buffer, header));
+    assert(serialize(buffer, message));
+    return buffer;
 }
 
 template <MessageType MsgType>
-WriteBuffer serializeMessage(Message<MsgType> message)
+bool sendMessage(
+    ENetPeer* peer, Channel channel, uint32_t frameNumber, const Message<MsgType>& message)
 {
-    WriteBuffer buffer(1024);
-    assert(serialize(buffer, message));
-    return buffer;
+    const auto buffer = serializeMessage(frameNumber, message);
+    const auto res = enet_peer_send(peer, static_cast<uint8_t>(channel),
+        enet::Packet(buffer.getData(), buffer.getSize(), getChannelFlags(channel)).release());
+    if (res < 0) {
+        fmt::print(stderr, "Error sending message of type {}\n", MsgType);
+        return false;
+    }
+    return true;
 }

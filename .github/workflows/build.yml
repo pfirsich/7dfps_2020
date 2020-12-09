@@ -18,7 +18,7 @@ jobs:
       run: sudo apt update
     - name: Install Dependencies
       run: |
-        sudo apt install --assume-yes build-essential ninja-build cmake clang-10 libsdl2-dev libfmt-dev libglm-dev libenet-dev
+        sudo apt install --assume-yes build-essential ninja-build cmake clang-10 libsdl2-dev libfmt-dev libglm-dev libenet-dev libdocopt-dev
     - name: Configure
       run: |
         mkdir build
@@ -40,7 +40,7 @@ jobs:
       run: |
         git submodule update --init .\vcpkg
         .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg.exe install sdl2:x64-windows fmt:x64-windows glm:x64-windows stb:x64-windows enet:x64-windows
+        .\vcpkg\vcpkg.exe install sdl2:x64-windows fmt:x64-windows glm:x64-windows stb:x64-windows enet:x64-windows docopt:x64-windows
     - name: Configure
       run: |
         mkdir build

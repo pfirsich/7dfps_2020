@@ -55,6 +55,14 @@ struct PlayerInputController {
 };
 }
 
+struct CollisionResult {
+    glm::vec3 normal;
+    float penetrationDepth;
+};
+
+std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::EntityHandle entity,
+    comp::Transform& transform, const comp::CircleCollider& collider);
+
 void integrationSystem(ecs::World& world, float dt);
 
 void playerControlSystem(ecs::World& world, float dt);

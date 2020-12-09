@@ -35,8 +35,8 @@ const auto vert = R"(
 const auto frag = R"(
     #version 330 core
 
-    const float ambient = 1.0;
-    const float lightIntensity = 0.0;
+    const float ambient = 0.8;
+    const float lightIntensity = 0.2;
 
     uniform vec4 baseColorFactor;
     uniform sampler2D baseColorTexture;
@@ -164,7 +164,6 @@ void renderSystem(
                 material.baseColorTexture->bind(0);
                 shader.setUniform("baseColorTexture", 0);
                 shader.setUniform("baseColorFactor", material.baseColor);
-
                 prim.primitive.draw();
             }
         });

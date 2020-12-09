@@ -1,10 +1,8 @@
 #include "physics.hpp"
 
+#include "components.hpp"
+
 namespace {
-struct CollisionResult {
-    glm::vec3 normal;
-    float penetrationDepth;
-};
 
 std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo,
     const comp::CircleCollider& circle, const comp::Transform& rectTrafo,
@@ -31,14 +29,39 @@ std::optional<CollisionResult> intersect(const comp::Transform& circleTrafo1,
 {
     const auto circlePos1 = glm::vec2(circleTrafo1.getPosition().x, circleTrafo1.getPosition().z);
     const auto circlePos2 = glm::vec2(circleTrafo2.getPosition().x, circleTrafo2.getPosition().z);
-    const auto rel = circlePos1 - circlePos2;
     const auto radiusSum = circle1.radius + circle2.radius;
+    const auto rel = circlePos1 - circlePos2;
     const auto dist = glm::length(rel);
     if (dist > radiusSum)
         return std::nullopt;
 
+    // they are probably perfectly inside each other.
+    // We return a collision result, so the server knows not to spawn another player there, but we
+    // return a zero collision normal, so we don't resolve it.
+    if (dist <= 0.0f)
+        return CollisionResult { glm::vec3(0.0f), 0.0f };
+
     const auto normal = rel / dist;
     return CollisionResult { glm::vec3(normal.x, 0.0f, normal.y), radiusSum - dist };
+}
+
+void integrateCircleColliders(ecs::World& world, ecs::EntityHandle entity, comp::Velocity& velocity,
+    comp::Transform& transform, const comp::CircleCollider& collider, float dt)
+{
+    transform.move(velocity.value * dt);
+    static constexpr size_t maxCollisionCount = 10;
+    size_t collisionCount = 0;
+    while (collisionCount < maxCollisionCount) {
+        const auto collision = findFirstCollision(world, entity, transform, collider);
+        if (!collision)
+            return;
+        transform.move(collision->normal * collision->penetrationDepth);
+        // project velocity on tangent (remove normal component)
+        const auto tangent = glm::vec3(-collision->normal.z, 0.0f, collision->normal.x);
+        velocity.value = glm::dot(velocity.value, tangent) * tangent;
+        collisionCount++;
+    }
+}
 }
 
 std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::EntityHandle entity,
@@ -64,28 +87,10 @@ std::optional<CollisionResult> findFirstCollision(ecs::World& world, ecs::Entity
     return maxDepthResult;
 }
 
-void integrateCircleColliders(ecs::World& world, ecs::EntityHandle entity, comp::Velocity& velocity,
-    comp::Transform& transform, const comp::CircleCollider& collider, float dt)
-{
-    transform.move(velocity.value * dt);
-    static constexpr size_t maxCollisionCount = 10;
-    size_t collisionCount = 0;
-    while (collisionCount < maxCollisionCount) {
-        const auto collision = findFirstCollision(world, entity, transform, collider);
-        if (!collision)
-            return;
-        transform.move(collision->normal * collision->penetrationDepth);
-        // project velocity on tangent (remove normal component)
-        const auto tangent = glm::vec3(-collision->normal.z, 0.0f, collision->normal.x);
-        velocity.value = glm::dot(velocity.value, tangent) * tangent;
-        collisionCount++;
-    }
-}
-}
-
 void integrationSystem(ecs::World& world, float dt)
 {
-    world.forEachEntity<comp::Velocity, comp::Transform, comp::CircleCollider>(
+    // velocity will prevent this from being executed for non-local players
+    world.forEachEntity<comp::Velocity, comp::Transform, const comp::CircleCollider>(
         [&world, dt](ecs::EntityHandle entity, comp::Velocity& velocity, comp::Transform& transform,
             const comp::CircleCollider& collider) {
             integrateCircleColliders(world, entity, velocity, transform, collider, dt);

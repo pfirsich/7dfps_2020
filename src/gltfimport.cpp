@@ -180,7 +180,7 @@ struct GltfImportCache {
     }
 
     ecs::EntityHandle getEntity(
-        ecs::World& world, const gltf::Gltf& gltfFile, gltf::NodeIndex nodeIndex)
+        ecs::World& world, const gltf::Gltf& gltfFile, gltf::NodeIndex nodeIndex, bool server)
     {
         const auto it = entityMap.find(nodeIndex);
         if (it != entityMap.end())
@@ -200,11 +200,11 @@ struct GltfImportCache {
         } else {
             entity.add<comp::Hierarchy>();
             entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));
-            if (node.mesh) {
+            if (!server && node.mesh) {
                 entity.add<comp::Mesh>(getMesh(gltfFile, *node.mesh));
             }
             if (node.parent) {
-                auto parent = getEntity(world, gltfFile, *node.parent);
+                auto parent = getEntity(world, gltfFile, *node.parent, server);
                 comp::Hierarchy::setParent(entity, parent);
             }
             entityMap.emplace(nodeIndex, entity);
@@ -214,7 +214,21 @@ struct GltfImportCache {
 };
 }
 
-bool loadMap(const fs::path& path, ecs::World& world)
+std::shared_ptr<Mesh> loadMesh(const fs::path& path)
+{
+    const auto gltfFileOpt = gltf::load(path);
+    if (!gltfFileOpt) {
+        return nullptr;
+    }
+    const auto& gltfFile = *gltfFileOpt;
+    assert(gltfFile.scenes.size() == 1);
+
+    GltfImportCache importCache;
+    assert(gltfFile.nodes.size() == 1 && gltfFile.nodes[0].mesh);
+    return importCache.getMesh(gltfFile, *gltfFile.nodes[0].mesh);
+}
+
+bool loadMap(const fs::path& path, ecs::World& world, bool server)
 {
     const auto gltfFileOpt = gltf::load(path);
     if (!gltfFileOpt) {
@@ -226,7 +240,7 @@ bool loadMap(const fs::path& path, ecs::World& world)
     GltfImportCache importCache;
 
     for (const auto nodeIndex : gltfFile.scenes[0].nodes) {
-        importCache.getEntity(world, gltfFile, nodeIndex);
+        importCache.getEntity(world, gltfFile, nodeIndex, server);
     }
 
     return true;
