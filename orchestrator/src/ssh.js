@@ -8,7 +8,7 @@ async function sleep(time) {
 
 function gameCommand({ port, gameCode }) {
   const cmd = `nc -u -l ${port}`;
-  // const cmd = `7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
+  // const cmd = `docker run -p ${port}:${port}/udp -t ${image} build/7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
 
   return `mkdir -p /var/log/7dfps/games && ${cmd} | tee /var/log/7dfps/games/${gameCode}.log`;
 }

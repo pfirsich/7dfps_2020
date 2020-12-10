@@ -1,0 +1,6 @@
+.git
+.github
+build
+build-*
+orchestrator
+vcpkg
