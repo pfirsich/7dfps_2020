@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <vector>
 
 float lerp(float a, float b, float t);
 float unlerp(float val, float a, float b);
