@@ -40,7 +40,7 @@ async function spwanGameProcess(ssh, { port, gameCode, vmId }) {
 }
 
 async function waitForShh({ host, port }) {
-  const maxTries = 50;
+  const maxTries = 15;
   const waitTimeSec = 5;
   let tries = 0;
 

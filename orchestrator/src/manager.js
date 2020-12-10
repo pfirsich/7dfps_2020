@@ -28,7 +28,7 @@ function initScript(vm) {
 
 async function waitForAction(actionId) {
   const waitTimeSec = 5;
-  const maxTries = 50;
+  const maxTries = 15;
   let tries = 0;
 
   while (true) {
@@ -109,7 +109,7 @@ async function getOrCreateVm({ region }) {
   });
 
   if (freeVms.length > 0) {
-    console.log(`Reusing VM: ${freeVms[0].vmId}`);
+    console.log(`Reusing vm:${freeVms[0].vmId}`);
     return freeVms[0];
   }
 
