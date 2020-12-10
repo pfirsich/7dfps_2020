@@ -19,6 +19,7 @@ bool Client::run(const std::string& host, Port port)
     props.msaaSamples = 8;
     window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
     window_.maximize();
+    window_.setSwapInterval(0);
     resized(window_.getSize().x, window_.getSize().y);
     glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);
@@ -117,6 +118,8 @@ bool Client::run(const std::string& host, Port port)
     float clockTime = glwx::getTime();
     float accumulator = 0.0f;
     constexpr auto dt = 1.0f / tickRate;
+    size_t fps = 0;
+    float nextFps = glwx::getTime();
     while (running_) {
         const auto now = glwx::getTime();
         const auto clockDelta = now - clockTime;
@@ -134,6 +137,17 @@ bool Client::run(const std::string& host, Port port)
         }
 
         draw();
+
+        fps++;
+        if (nextFps < now) {
+            const auto stats = glw::State::instance().getStatistics();
+            const auto title = fmt::format(
+                "7DFPS - FPS: {}, draw calls: {}, shader binds: {}, texture binds: {}", fps,
+                getRenderStats().drawCalls, stats.shaderBinds, stats.textureBinds);
+            window_.setTitle(title);
+            nextFps = now + 1.0f;
+            fps = 0;
+        }
     }
 
     enet_peer_disconnect_now(serverPeer_, 0);
@@ -339,6 +353,8 @@ void Client::draw()
 
     auto cameraTransform = player_.get<comp::Transform>();
     cameraTransform.move(glm::vec3(0.0f, cameraOffsetY, 0.0f));
+    glw::State::instance().resetStatistics();
+    resetRenderStats();
     if (debugCollisionGeometry) {
         collisionRenderSystem(world_, projection_, cameraTransform);
     } else {

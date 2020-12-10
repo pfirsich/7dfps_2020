@@ -63,6 +63,13 @@ constexpr size_t Joints0 = 6;
 constexpr size_t Weights0 = 7;
 }
 
+struct RenderStats {
+    size_t drawCalls = 0;
+};
+
+void resetRenderStats();
+RenderStats getRenderStats();
+
 void collisionRenderSystem(
     ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform);
 

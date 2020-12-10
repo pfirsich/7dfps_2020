@@ -91,6 +91,8 @@ const auto skyboxFrag = R"(
 )"sv;
 }
 
+RenderStats renderStats;
+
 bool Skybox::load(const std::filesystem::path& posX, const std::filesystem::path& negX,
     const std::filesystem::path& posY, const std::filesystem::path& negY,
     const std::filesystem::path& posZ, const std::filesystem::path& negZ)
@@ -118,6 +120,7 @@ void Skybox::draw(const glm::mat4& projection, const glwx::Transform& cameraTran
     texture.bind(0);
     shader.setUniform("skyboxTexture", 0);
     mesh.draw();
+    renderStats.drawCalls++;
     glDepthMask(GL_TRUE);
     glEnable(GL_CULL_FACE);
 }
@@ -148,6 +151,7 @@ void Mesh::draw(const glw::ShaderProgram& shader) const
         shader.setUniform("baseColorTexture", 0);
         shader.setUniform("baseColorFactor", material.baseColor);
         prim.primitive.draw();
+        renderStats.drawCalls++;
     }
 }
 
@@ -156,7 +160,6 @@ glw::ShaderProgram& getShader()
 {
     static glw::ShaderProgram shader = glwx::makeShaderProgram(vert, frag).value();
     return shader;
-}
 }
 
 glm::mat4 getModelMatrix(ecs::EntityHandle entity, const comp::Transform& transform)
@@ -168,6 +171,17 @@ glm::mat4 getModelMatrix(ecs::EntityHandle entity, const comp::Transform& transf
         }
     }
     return transform.getMatrix();
+}
+}
+
+void resetRenderStats()
+{
+    renderStats = RenderStats {};
+}
+
+RenderStats getRenderStats()
+{
+    return renderStats;
 }
 
 void renderSystem(
@@ -252,5 +266,6 @@ void collisionRenderSystem(
             const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
             shader.setUniform("normalMatrix", normal);
             box.mesh.draw();
+            renderStats.drawCalls++;
         });
 }

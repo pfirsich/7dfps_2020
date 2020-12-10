@@ -57,6 +57,6 @@ target_link_libraries(7dfps PRIVATE glwx gltf)
 target_link_libraries(7dfps PRIVATE fmt::fmt)
 target_link_libraries(7dfps PRIVATE ${ENET_LIBRARIES})
 target_link_libraries(7dfps PRIVATE Threads::Threads)
-target_link_libraries(7dfps PRIVATE docopt_s)
+target_link_libraries(7dfps PRIVATE docopt)
 
 set_wall(7dfps)
