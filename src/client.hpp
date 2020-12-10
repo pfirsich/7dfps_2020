@@ -8,6 +8,7 @@
 #include "ecs.hpp"
 #include "graphics.hpp"
 #include "net.hpp"
+#include "shipsystem.hpp"
 
 class Client {
 public:
@@ -55,6 +56,7 @@ private:
     glwx::Window window_;
     ecs::World world_;
     std::unordered_map<PlayerId, ecs::EntityHandle> players_; // excludes self
+    std::vector<std::unique_ptr<ShipSystem>> shipSystems_;
     std::shared_ptr<Mesh> playerMesh_;
     std::unique_ptr<Skybox> skybox_;
     ecs::EntityHandle player_;

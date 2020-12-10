@@ -4,6 +4,7 @@
 #include "gltfimport.hpp"
 #include "graphics.hpp"
 #include "physics.hpp"
+#include "shipsystem.hpp"
 
 namespace {
 static bool debugCollisionGeometry = false;
@@ -31,6 +32,13 @@ bool Client::run(const std::string& host, Port port)
     // TODO: Somehow filter some output out, because it's too much to learn anything right now
     // glwx::debug::init();
 #endif
+
+    shipSystems_.push_back(std::make_unique<LuaShipSystem>("reactor", "media/systems/reactor.lua"));
+    fmt::print("battery: {}\n", shipSystems_[0]->getSensor("battery-level"));
+    MessageBus::instance().registerEndpoint("dummy");
+    MessageBus::instance().send(
+        "dummy", "reactor", MessageBus::Message { "requestEnergy", { 1.31415f } });
+    shipSystems_[0]->executeCommand("power-output show");
 
     skybox_ = std::make_unique<Skybox>();
     if (!skybox_->load("media/skybox/1.png", "media/skybox/2.png", "media/skybox/3.png",
@@ -251,6 +259,8 @@ void Client::update(float dt)
     playerControlSystem(world_, dt);
     integrationSystem(world_, dt);
     handleInteractions();
+    for (const auto& sys : shipSystems_)
+        sys->update();
 }
 
 void Client::sendUpdate()

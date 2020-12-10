@@ -36,8 +36,10 @@ set(SRC
   main.cpp
   net.cpp
   physics.cpp
+  random.cpp
   serialization.cpp
   server.cpp
+  shipsystem.cpp
   util.cpp
 )
 list(TRANSFORM SRC PREPEND src/)
@@ -47,16 +49,28 @@ find_package(ENet REQUIRED)
 find_package(Threads REQUIRED)
 find_package(docopt COMPONENTS CXX REQUIRED)
 
+if (NOT WIN32)
+  find_library(LUAJIT_LIBRARY_DIR libluajit-5.1.a REQUIRED)
+  find_path(LUAJIT_INCLUDE_DIR luajit.h PATH_SUFFIXES luajit-2.1 REQUIRED)
+  add_library(luajit INTERFACE)
+  target_include_directories(luajit INTERFACE ${LUAJIT_INCLUDE_DIR})
+  target_link_libraries(luajit INTERFACE ${LUAJIT_LIBRARY_DIR})
+  message(STATUS "LuaJIT Include Dir: ${LUAJIT_INCLUDE_DIR}")
+  message(STATUS "LuaJIT Library Dir: ${LUAJIT_LIBRARY_DIR}")
+endif()
+
 add_executable(7dfps ${SRC})
 target_include_directories(7dfps PUBLIC include)
 target_include_directories(7dfps PRIVATE deps/glwrap/include)
 target_include_directories(7dfps PRIVATE deps/gltf)
 target_include_directories(7dfps PRIVATE ${ENET_INCLUDE_DIRS})
 target_include_directories(7dfps PRIVATE ${DOCOPT_INCLUDE_DIRS})
+target_include_directories(7dfps SYSTEM PRIVATE deps/sol2/single/include)
 target_link_libraries(7dfps PRIVATE glwx gltf)
 target_link_libraries(7dfps PRIVATE fmt::fmt)
 target_link_libraries(7dfps PRIVATE ${ENET_LIBRARIES})
 target_link_libraries(7dfps PRIVATE Threads::Threads)
 target_link_libraries(7dfps PRIVATE docopt)
+target_link_libraries(7dfps PRIVATE luajit)
 
 set_wall(7dfps)

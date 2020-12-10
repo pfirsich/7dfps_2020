@@ -9,3 +9,6 @@ static constexpr float outlineBlowup = 1.5f;
 static constexpr float interactDistance = 4.0f;
 static constexpr float lookSensitivity = 0.0025f;
 static constexpr float floorHeight = 10.0f;
+static constexpr size_t maxLogLines = 250;
+static constexpr size_t maxTerminalOutputSize = 16 * 1024;
+static constexpr size_t terminalTruncateAmount = 2 * 1024;
