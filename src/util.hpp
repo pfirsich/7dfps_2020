@@ -4,7 +4,9 @@
 #include <optional>
 #include <string>
 
-float rescale(float val, float fromMin, float fromMax, float toMin, float toMax);
+float lerp(float a, float b, float t);
+float unlerp(float val, float a, float b);
+float rescale(float val, float fromA, float fromB, float toA, float toB);
 
 // I would use boost's lexical cast, if I had another reason to use boost
 template <typename T = long long>

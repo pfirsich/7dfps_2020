@@ -4,11 +4,20 @@
 
 #include <fmt/format.h>
 
-float rescale(float val, float fromMin, float fromMax, float toMin, float toMax)
+float lerp(float a, float b, float t)
 {
-    const auto clampVal = std::clamp(val, fromMin, fromMax);
-    const auto t = (clampVal - fromMin) / (fromMax - fromMin);
-    return toMin + t * (toMax - toMin);
+    return a + t * (b - a);
+}
+
+float unlerp(float val, float a, float b)
+{
+    const auto clamped = std::clamp(val, std::min(a, b), std::max(a, b));
+    return (clamped - a) / (b - a);
+}
+
+float rescale(float val, float fromA, float fromB, float toA, float toB)
+{
+    return lerp(toA, toB, unlerp(val, fromA, fromB));
 }
 
 std::string hexStream(const uint8_t* data, size_t len)
