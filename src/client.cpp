@@ -169,6 +169,8 @@ bool Client::run(const std::string& host, Port port)
         }
     }
 
+    MessageBus::instance().clearEndpoints();
+
     enet_peer_disconnect_now(serverPeer_, 0);
 
     ImGui_ImplOpenGL3_Shutdown();
