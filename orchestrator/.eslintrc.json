@@ -1,0 +1,19 @@
+{
+  "root": true,
+  "env": {
+    "node": true
+  },
+  "extends": ["airbnb-base", "prettier"],
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": ["warn"],
+    "no-console": "off",
+    "max-classes-per-file": "off",
+    "no-plusplus": "off",
+    "no-await-in-loop": "off",
+    "no-param-reassign": "off",
+    "no-continue": "off",
+    "no-constant-condition": "off",
+    "no-restricted-syntax": "off"
+  }
+}

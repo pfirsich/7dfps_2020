@@ -42,9 +42,11 @@ Example response:
 
 ```json
 {
-  "gameCode": "6DDC10",
-  "host": "foo.example.com",
-  "port": 2646
+  "gameCode": "6D257A",
+  "host": "138.197.179.34",
+  "port": 36400,
+  "version": "stable",
+  "timeStarted": "2020-12-11T10:36:51.048Z"
 }
 ```
 
@@ -60,8 +62,10 @@ Example response:
 
 ```json
 {
-  "gameCode": "6DDC10",
-  "host": "foo.example.com",
-  "port": 2646
+  "gameCode": "6D257A",
+  "host": "138.197.179.34",
+  "port": 36400,
+  "version": "stable",
+  "timeStarted": "2020-12-11T10:36:51.048Z"
 }
 ```

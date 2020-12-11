@@ -9,7 +9,7 @@ const pool = new Pool({
 });
 
 pool.on("error", (err, client) => {
-  console.error("Unexpected error on idle client", err);
+  console.error("Unexpected error on idle client", err, client);
   console.error("Exiting for good messure");
   process.exit(1);
 });
@@ -26,8 +26,40 @@ function query(...args) {
   });
 }
 
+function vmRowToObject(row) {
+  return {
+    vmId: row.vmid,
+    region: row.region,
+    state: row.state,
+    ipv4Address: row.ipv4address,
+    dropletId: row.dropletid,
+    timeStarted: row.timestarted,
+    timeTerminated: row.timeterminated,
+
+    // Optional:
+    gamesCount: row.gamescount ? Number(row.gamescount) : null,
+  };
+}
+
+function gameRowToObject(row) {
+  return {
+    gameId: row.gameid,
+    gameCode: row.gamecode,
+    creatorIpAddress: row.creatoripaddress,
+    host: row.host,
+    port: row.port,
+    vmId: row.vmid,
+    state: row.state,
+    version: row.version,
+    timeStarted: row.timestarted,
+    timeEnded: row.timeended,
+  };
+}
+
 async function countVms() {
-  const res = await query("SELECT COUNT(*) as vmCount FROM vms");
+  const res = await query(
+    "SELECT COUNT(*) as vmCount FROM vms WHERE state != 'TERMINATED'"
+  );
 
   return Number(res.rows[0].vmcount);
 }
@@ -35,76 +67,174 @@ async function countVms() {
 async function getFreeVms({ region, maxGamesOnVm }) {
   // Sort descending to always fill VMs first
   const res = await query(
-    `SELECT vms.vmid, vms.region, COUNT(games.gamecode) AS gamesCount
+    `SELECT vms.*, COUNT(games.gamecode) AS gamesCount
         FROM vms
-        LEFT JOIN games ON vms.vmId=games.vmId
-        WHERE region = $1
+        LEFT JOIN (SELECT * FROM games WHERE games.state != 'OVER') as games ON vms.vmId=games.vmId
+        WHERE region = $1 AND vms.state = 'RUNNING'
         GROUP BY vms.vmid
         HAVING COUNT(games.gamecode) < $2
         ORDER BY gamesCount DESC`,
     [region, maxGamesOnVm]
   );
 
-  return res.rows.map((row) => ({
-    vmId: row.vmid,
-    region: row.region,
-    gamesCount: Number(row.gamescount),
-  }));
+  return res.rows.map(vmRowToObject);
 }
 
-async function addVm({ region }) {
+async function getEmptyVms() {
+  // Get VMs that are not TERMINATED and where no games exits which are still
+  // running or just ended less than 20 minutes ago.
+  // Excuse my subselects.
   const res = await query(
-    "INSERT INTO vms(region) VALUES($1) RETURNING vmId, region",
-    [region]
+    `SELECT *
+     FROM vms
+     WHERE vms.state != 'TERMINATED'
+         AND NOT EXISTS (
+             SELECT vmId
+             FROM games
+             WHERE games.vmId = vms.vmId
+                 AND (games.state != 'OVER'
+                     OR (games.state = 'OVER'
+                         AND games.timeEnded > NOW() - INTERVAL '1 minutes')))`
   );
 
-  const [row] = res.rows;
-
-  return {
-    vmId: row.vmid,
-    region: row.region,
-  };
+  return res.rows.map(vmRowToObject);
 }
 
-async function getGame(gameCode) {
-  const res = await query("SELECT * FROM games WHERE gameCode = $1", [
-    gameCode,
-  ]);
+// TODO: Only set update fields
+// current implemtation is a consistency foot gun
+async function setVm({
+  vmId,
+  region,
+  state,
+  ipv4Address,
+  dropletId,
+  timeStarted,
+  timeTerminated,
+}) {
+  let sql;
+  let values = [
+    region,
+    state,
+    ipv4Address,
+    dropletId,
+    timeStarted,
+    timeTerminated,
+  ];
+
+  if (vmId) {
+    values = [vmId, ...values];
+    sql = `UPDATE vms
+               SET region = $2,
+                   state = $3,
+                   ipv4Address = $4,
+                   dropletId = $5,
+                   timeStarted = $6,
+                   timeTerminated = $7
+               WHERE vmId = $1
+               RETURNING vmId, region, state, ipv4Address, dropletId, timeStarted, timeTerminated`;
+  } else {
+    sql = `INSERT INTO vms(region, state, ipv4Address, dropletId, timeStarted, timeTerminated)
+               VALUES($1, $2, $3, $4, $5, $6)
+               RETURNING vmId, region, state, ipv4Address, dropletId, timeStarted, timeTerminated`;
+  }
+
+  const res = await query(sql, values);
+
+  return vmRowToObject(res.rows[0]);
+}
+
+async function getGameByGameCode(gameCode) {
+  const res = await query(
+    "SELECT * FROM games WHERE gameCode = $1 ORDER BY timeStarted DESC",
+    [gameCode]
+  );
 
   if (res.rows.length === 0) {
     return null;
   }
 
-  const [row] = res.rows;
-
-  return {
-    gameCode: row.gamecode,
-    host: row.host,
-    port: row.port,
-    vmId: row.vmid,
-  };
+  return gameRowToObject(res.rows[0]);
 }
 
-async function addGame({ gameCode, host, port, vmId }) {
+async function getGameByGameId(gameId) {
   const res = await query(
-    "INSERT INTO games(gameCode, host, port, vmId) VALUES($1, $2, $3, $4) RETURNING gameCode, host, port, vmId",
-    [gameCode, host, port, vmId]
+    "SELECT * FROM games WHERE gameId = $1 ORDER BY timeStarted DESC",
+    [gameId]
   );
 
-  const [row] = res.rows;
+  if (res.rows.length === 0) {
+    return null;
+  }
 
-  return {
-    gameCode: row.gamecode,
-    host: row.host,
-    port: row.port,
-    vmId: row.vmid,
-  };
+  return gameRowToObject(res.rows[0]);
+}
+
+async function getTimeoutedGames() {
+  const res = await query(
+    `SELECT * FROM games WHERE state != 'OVER' AND timeStarted < NOW() - INTERVAL '2 hours'`
+  );
+
+  return res.rows.map(gameRowToObject);
+}
+
+async function setGame({
+  gameId,
+  gameCode,
+  creatorIpAddress,
+  host,
+  port,
+  vmId,
+  state,
+  version,
+  timeStarted,
+  timeEnded,
+}) {
+  let sql;
+
+  let values = [
+    gameCode,
+    creatorIpAddress,
+    host,
+    port,
+    vmId,
+    state,
+    version,
+    timeStarted,
+    timeEnded,
+  ];
+
+  if (gameId) {
+    values = [gameId, ...values];
+    sql = `UPDATE games
+               SET gameCode = $2,
+                   creatorIpAddress = $3,
+                   host = $4,
+                   port = $5,
+                   vmId = $6,
+                   state = $7,
+                   version = $8,
+                   timeStarted = $9,
+                   timeEnded = $10
+               WHERE gameId = $1
+               RETURNING gameId, gameCode, creatorIpAddress, host, port, vmId, state, version, timeStarted, timeEnded`;
+  } else {
+    sql = `INSERT INTO games(gameCode, creatorIpAddress, host, port, vmId, state, version, timeStarted, timeEnded)
+               VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING gameId, gameCode, creatorIpAddress, host, port, vmId, state, version, timeStarted, timeEnded`;
+  }
+
+  const res = await query(sql, values);
+
+  return gameRowToObject(res.rows[0]);
 }
 
 module.exports = {
   countVms,
   getFreeVms,
-  addVm,
-  getGame,
-  addGame,
+  getEmptyVms,
+  setVm,
+  getGameByGameCode,
+  getGameByGameId,
+  getTimeoutedGames,
+  setGame,
 };

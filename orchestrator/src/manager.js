@@ -1,7 +1,9 @@
+const DigitalOcean = require("do-wrapper").default;
+const exitHook = require("async-exit-hook");
+
 const db = require("./db");
 const ssh = require("./ssh");
 const config = require("./config");
-const DigitalOcean = require("do-wrapper").default;
 
 const doClient = new DigitalOcean(process.env.DO_ACCESS_TOKEN);
 
@@ -28,7 +30,7 @@ function initScript(vm) {
 
 async function waitForAction(actionId) {
   const waitTimeSec = 5;
-  const maxTries = 15;
+  const maxTries = 20;
   let tries = 0;
 
   while (true) {
@@ -57,13 +59,16 @@ async function waitForAction(actionId) {
 }
 
 async function startVm({ region }) {
-  const vm = await db.addVm({ region });
+  let vm = await db.setVm({
+    region,
+    state: "INITAL",
+    timeStarted: "NOW()",
+  });
 
-  const name = "7dfps-game-vm-" + vm.vmId;
-
+  const name = `7dfps-game-vm-${vm.vmId}`;
   console.log(`Starting droplet: ${name}`);
 
-  const response = await doClient.droplets.create({
+  const result = await doClient.droplets.create({
     name,
     region,
     size: config.vmSize,
@@ -77,28 +82,61 @@ async function startVm({ region }) {
     tags: [...config.vmTags, `vmId:${vm.vmId}`],
   });
 
-  const actionId = response.links.actions[0].id;
+  vm = await db.setVm({
+    ...vm,
+    state: "PROVISIONING",
+    dropletId: result.droplet.id,
+  });
+
+  const actionId = result.links.actions[0].id;
 
   console.log(`Droplet creation ${name}, Action ID: ${actionId}`);
 
   await waitForAction(actionId);
 
-  const { droplet } = await doClient.droplets.getById(response.droplet.id);
+  const { droplet } = await doClient.droplets.getById(result.droplet.id);
 
   const publicNetwork = droplet.networks.v4.find((n) => n.type === "public");
   const ipv4Address = publicNetwork.ip_address;
 
+  vm = await db.setVm({
+    ...vm,
+    state: "RUNNING",
+    ipv4Address,
+  });
+
   console.log("Droplet created with IP:", ipv4Address);
 
-  return {
-    ...vm,
+  return vm;
+}
 
-    // TODO: Write this to DB
-    name: droplet.name,
-    id: droplet.id,
-    createdAt: droplet.created_at,
-    ipv4Address,
-  };
+async function shutDownVm(vm) {
+  console.log(
+    `Shuting down vm:${vm.vmId} Droplet: ${vm.dropletId} IP: ${vm.ipv4Address}`
+  );
+
+  vm = await db.setVm({
+    ...vm,
+    state: "SHUTTING_DOWN",
+  });
+
+  await doClient.droplets.deleteById(vm.dropletId);
+
+  vm = await db.setVm({
+    ...vm,
+    state: "TERMINATED",
+    timeTerminated: "NOW()",
+  });
+
+  console.log(`Terminated vm:${vm.vmId}`);
+}
+
+async function checkVms() {
+  console.log("Checking if any VMs can be shut down");
+  const emptyVms = await db.getEmptyVms();
+
+  // Shut down all VMs in parallel
+  await Promise.all(emptyVms.map(shutDownVm));
 }
 
 // TODO: this should all be one transaction....
@@ -124,37 +162,106 @@ async function getOrCreateVm({ region }) {
   return startVm({ region });
 }
 
-async function startGame({ region }) {
+async function onExitGame(gameInfo) {
+  console.log(`Game ended ${gameInfo.gameCode} (id: ${gameInfo.gameId})`);
+
+  gameInfo = await db.setGame({
+    ...gameInfo,
+    state: "OVER",
+    timeEnded: "NOW()",
+  });
+
+  await checkVms();
+}
+
+async function startGame({ region, creatorIpAddress, version }) {
   const gameCode = Math.round(Math.random() * config.gameCodeSize)
     .toString(16)
     .toUpperCase();
 
-  const vm = await getOrCreateVm({ region });
+  let gameInfo = await db.setGame({
+    gameCode,
+    state: "PROVISIONING",
+    creatorIpAddress,
+    version,
+    timeStarted: "NOW()",
+  });
 
-  const port = randomRange(32768, 60999);
-  const host = vm.ipv4Address || "207.154.216.224";
+  try {
+    const vm = await getOrCreateVm({ region });
 
-  if (!host) {
-    throw new Error("No IP for vm");
+    const port = randomRange(32768, 60999);
+    const host = vm.ipv4Address;
+
+    gameInfo = await db.setGame({
+      ...gameInfo,
+      state: "STARTING",
+      host,
+      port,
+      vmId: vm.vmId,
+    });
+
+    if (!host) {
+      throw new Error("No IP for vm");
+    }
+
+    await ssh.startGameProcess(gameInfo, onExitGame);
+
+    gameInfo = await db.setGame({
+      ...gameInfo,
+      state: "RUNNING",
+    });
+  } catch (error) {
+    await onExitGame(gameInfo);
+
+    throw error;
   }
-
-  await ssh.startGameProcess({
-    gameCode,
-    host,
-    port,
-    vmId: vm.vmId,
-  });
-
-  const gameInfo = await db.addGame({
-    gameCode,
-    host,
-    port,
-    vmId: vm.vmId,
-  });
 
   return gameInfo;
 }
 
+function lookUpGame(gameCode) {
+  return db.getGameByGameCode(gameCode);
+}
+
+async function checkTimeoutedGames() {
+  console.log("Checking for timeouted games");
+  const timeoutedGames = await db.getTimeoutedGames();
+
+  for (const gameInfo of timeoutedGames) {
+    console.log(`Game timeouted ${gameInfo.gameCode} (id: ${gameInfo.gameId})`);
+    ssh.tryClosingConnection(gameInfo.gameId);
+    await onExitGame(gameInfo);
+  }
+}
+
+exitHook(async (callback) => {
+  console.log(); // New line after ^C
+  console.log();
+  console.log("===========================");
+  console.log("Cleaning up, please wait...");
+  console.log("===========================");
+  console.log();
+
+  try {
+    const gameIds = ssh.tryClosingAllConnections();
+
+    // Closing the ssh connection will also end the game but it won't
+    // wait for it so we have to close the game here just to make sure.
+    for (const gameId of gameIds) {
+      const gameInfo = await db.getGameByGameId(gameId);
+      await onExitGame(gameInfo);
+    }
+  } catch (error) {
+    console.error("Error in clean up:", error);
+  }
+
+  callback();
+});
+
 module.exports = {
   startGame,
+  checkTimeoutedGames,
+  checkVms,
+  lookUpGame,
 };
