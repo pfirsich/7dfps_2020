@@ -63,7 +63,7 @@ find_package(Threads REQUIRED)
 find_package(docopt COMPONENTS CXX REQUIRED)
 
 find_library(LUAJIT_LIBRARY_DIR libluajit-5.1.a lua51 REQUIRED)
-find_path(LUAJIT_INCLUDE_DIR luajit.h PATH_SUFFIXES luajit-2.1 luajit REQUIRED)
+find_path(LUAJIT_INCLUDE_DIR luajit.h PATH_SUFFIXES luajit-2.1 luajit EQUIRED)
 add_library(luajit INTERFACE)
 target_include_directories(luajit INTERFACE ${LUAJIT_INCLUDE_DIR})
 target_link_libraries(luajit INTERFACE ${LUAJIT_LIBRARY_DIR})
