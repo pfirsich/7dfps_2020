@@ -26,6 +26,8 @@ bool Client::run(const std::string& host, Port port)
     glwx::Window::Properties props;
     props.msaaSamples = 8;
     props.stencil = true;
+    props.allowHighDpi = false;
+
     window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
     window_.maximize();
     window_.setSwapInterval(0);
