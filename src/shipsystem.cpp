@@ -91,6 +91,7 @@ ShipSystem::ShipSystem(const Name& name)
     : name_(name)
 {
     MessageBus::instance().registerEndpoint(name);
+    terminalOutput("Type 'manual' to see available commands");
 }
 
 ShipSystem::~ShipSystem()
@@ -141,7 +142,9 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
         return;
     }
 
-    const auto& cmdName = toLower(args[0]);
+    auto cmdName = toLower(args[0]);
+    if (cmdName == "man")
+        cmdName = "manual";
 
     const auto idx = findCommand(cmdName);
     if (!idx) {
@@ -183,7 +186,63 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
 
 void ShipSystem::executeCommand(const std::string& command)
 {
+    terminalOutput(fmt::format("# {}\n", command));
     executeCommand(split(command));
+}
+
+void ShipSystem::sensorShowCommand(const std::vector<CommandArg>& args)
+{
+    if (args.size() != 1 || !std::holds_alternative<std::string>(args[0])) {
+        terminalOutput("Usage: sensor show SENSORNAME\n");
+        return;
+    }
+    const auto& name = std::get<std::string>(args[0]);
+    const auto idx = findSensor(name);
+    if (!idx) {
+        terminalOutput(fmt::format("Unknown sensor '{}'\n", name));
+        assert(false);
+    }
+    terminalOutput(fmt::format("{}\n", sensors_[*idx].func()));
+}
+
+void ShipSystem::manCommand()
+{
+    terminalOutput("Available commands:\n");
+    for (const auto& command : commands_) {
+        for (const auto& subCommand : command.subCommands) {
+            std::string args = "";
+            for (const auto& arg : subCommand.arguments) {
+                args.push_back(' ');
+                args.append(arg);
+            }
+            const auto text = fmt::format("{} {}{}", command.name, subCommand.name, args);
+            terminalOutput(text);
+        }
+    }
+}
+
+void ShipSystem::addBuiltinCommands()
+{
+    // The refs here are dangerous, but it is what it is
+    for (const auto& log : logs_) {
+        addCommand("log", log.id, {},
+            [this, &log](const std::vector<CommandArg>&) { terminalOutput(getLogText(log.id)); });
+    }
+
+    addCommand("manual", "", {}, [this](const std::vector<CommandArg>&) { manCommand(); });
+    for (const auto& entry : manuals_) {
+        const auto& manual = entry.second;
+        addCommand("manual", entry.first, {},
+            [this, &manual](const std::vector<CommandArg>&) { terminalOutput(manual); });
+    }
+
+    addCommand("sensor", "list", {}, [this](const std::vector<CommandArg>&) {
+        for (const auto& sensor : sensors_) {
+            terminalOutput(sensor.id);
+        }
+    });
+    addCommand("sensor", "show", { "SENSORNAME" },
+        [this](const std::vector<CommandArg>& args) { sensorShowCommand(args); });
 }
 
 void ShipSystem::addSensor(const ShipSystem::SensorId& id, ShipSystem::SensorFunc func)
@@ -217,22 +276,67 @@ ShipSystem::SensorValue ShipSystem::getSensor(const SensorId& id)
     return sensors_[*idx].func();
 }
 
-void ShipSystem::addManual(const std::optional<std::string>& name, const std::string& text)
+void ShipSystem::addManual(const std::string& name, const std::string& text)
 {
-    manuals_.emplace(name ? *name : DefaultManual, text);
+    manuals_.emplace(name, text);
+}
+
+void ShipSystem::registerLog(const LogId& id)
+{
+    const auto idx = findLog(id);
+    if (idx) {
+        fmt::print(stderr, "Log '{}' already registered\n", id);
+        assert(false);
+        return;
+    }
+    logs_.push_back(Log { {}, id });
 }
 
 void ShipSystem::log(const LogId& id, LogLevel level, std::string text)
 {
     auto idx = findLog(id);
     if (!idx) {
-        logs_.push_back(Log { {}, id });
-        idx = logs_.size() - 1;
+        fmt::print(stderr, "Log '{}' is not registered\n", id);
+        assert(false);
+        return;
     }
     auto& log = logs_[*idx];
     log.lines.push_back(Log::Line { level, std::move(text) });
     while (log.lines.size() > maxLogLines)
         log.lines.pop_front();
+}
+
+std::string_view ShipSystem::getLogLevelString(LogLevel level)
+{
+    switch (level) {
+    case LogLevel::Debug:
+        return "DEBUG";
+    case LogLevel::Info:
+        return "INFO";
+    case LogLevel::Warning:
+        return "WARNING";
+    case LogLevel::Error:
+        return "ERROR";
+    default:
+        return "POOP";
+    }
+}
+
+std::string ShipSystem::getLogText(const LogId& id) const
+{
+    auto idx = findLog(id);
+    if (!idx) {
+        fmt::print(stderr, "Log '{}' is not registered\n", id);
+        assert(false);
+        return "";
+    }
+
+    std::string text;
+    text.reserve(16 * 1024);
+    for (const auto& line : logs_[*idx].lines) {
+        text.append(fmt::format("[] [{}] {}\n", getLogLevelString(line.level), line.text));
+    }
+    return text;
 }
 
 void ShipSystem::terminalOutput(const std::string& text)
@@ -334,8 +438,8 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
                 checkError(func(sender, sol::as_args(msg.fields)));
             });
     });
-    lua["manual"].set_function([this](const std::optional<std::string>& name,
-                                   const std::string& text) { addManual(name, text); });
+    lua["manual"].set_function(
+        [this](const std::string& name, const std::string& text) { addManual(name, text); });
     lua["command"].set_function([this](const std::string& command,
                                     const std::optional<std::string>& subCommand,
                                     sol::table arguments, sol::function func) {
@@ -350,11 +454,16 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
     lua["setAlarm"].set_function([this]() { alarm = true; });
     lua["hasAlarm"].set_function([this]() { return alarm; });
     lua["clearAlarm"].set_function([this]() { alarm = false; });
+    lua["logs"].set_function([this](sol::variadic_args va) {
+        for (auto v : va)
+            registerLog(v.as<std::string>());
+    });
     lua["log"].set_function([this](const std::string& logId, int level, const std::string& text) {
         log(logId, static_cast<LogLevel>(level), text);
     });
 
     lua.script_file(scriptPath.u8string());
+    addBuiltinCommands();
 }
 
 LuaShipSystem::~LuaShipSystem()

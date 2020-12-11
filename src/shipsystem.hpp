@@ -97,6 +97,7 @@ public:
     void addTick(float interval, TickFunction func);
     void update();
 
+    void addBuiltinCommands();
     void addCommand(const std::string& command, const std::optional<std::string>& subCommand,
         const std::vector<std::string>& arguments, CommandFunc func);
     void executeCommand(const std::string& command);
@@ -106,9 +107,11 @@ public:
     std::vector<SensorId> getSensors() const;
     SensorValue getSensor(const SensorId& id);
 
-    void addManual(const std::optional<std::string>& name, const std::string& text);
+    void addManual(const std::string& name, const std::string& text);
 
+    void registerLog(const LogId& log);
     void log(const LogId& log, LogLevel level, std::string text);
+    std::string getLogText(const LogId& id) const;
 
     void terminalOutput(const std::string& text);
     const std::string& getTerminalOutput() const;
@@ -155,6 +158,11 @@ private:
     std::optional<size_t> findCommand(const std::string& name) const;
     std::optional<size_t> findSensor(const SensorId& id) const;
     std::optional<size_t> findLog(const LogId& id) const;
+
+    void sensorShowCommand(const std::vector<CommandArg>& arg);
+    void manCommand();
+
+    static std::string_view getLogLevelString(LogLevel level);
 
     void truncateTerminalOutput();
 

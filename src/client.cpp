@@ -402,20 +402,16 @@ void Client::draw()
 
     if (debugSystems) {
         static std::unordered_map<std::string, std::string> commandInputs;
-        // ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
 
         for (auto& sys : shipSystems_) {
             ImGui::Begin(sys->getName().c_str());
             auto& input = commandInputs[sys->getName()];
-            /*const auto headerName = fmt::format("{} - {}", sys->getName(), "Sensors");
-            if (ImGui::CollapsingHeader(headerName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                for (const auto& id : sys->getSensors()) {
-                    ImGui::Text("%s: %f", id.c_str(), sys->getSensor(id));
-                }
-            }*/
             ImGui::BeginChild("Child",
                 ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 60));
             ImGui::TextUnformatted(sys->getTerminalOutput().c_str());
+            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+                ImGui::SetScrollHereY(1.0f);
             ImGui::EndChild();
             if (ImGui::InputText("Execute", &input, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 sys->executeCommand(input);

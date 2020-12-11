@@ -26,9 +26,10 @@ local function getCoreFuelConsumption(core)
     return jitter(lerp(1.5, 1.0, cores[core].integrity), 0.1, 0.05)
 end
 
+logs("")
+
 -- fill battery
 tick(1.0, function()
-    terminalOutput("fill battery")
     for i = 1, coreCount do
         cores[i] = {
             integrity = 1.0, -- drives power output
@@ -38,13 +39,12 @@ end)
 
 -- trigger alarm
 tick(5.0, function()
-    terminalOutput("trigger alarm")
     if battery < alarmLevel then
         setAlarm()
-        log("battery", logLevel.WARNING, ("Battery level critical (%d%%)"):format(math.floor(battery * 100)))
+        log("", logLevel.WARNING, ("Battery level critical (%d%%)"):format(math.floor(battery * 100)))
     else
         if hasAlarm() then
-            log("battery", logLevel.INFO, ("Battery level normal (%d%%)"):format(math.floor(battery * 100)))
+            log("", logLevel.INFO, ("Battery level normal (%d%%)"):format(math.floor(battery * 100)))
         end
         clearAlarm()
     end
@@ -70,8 +70,6 @@ subscribe("requestEnergy", function(sender, amount)
     terminalOutput(("request %f from %s"):format(amount, sender))
 end)
 
-manual(nil, [[default manual]])
-
 command("power-output", "show", {}, function()
     local total = 0
     for i = 1, coreCount do
@@ -80,10 +78,14 @@ command("power-output", "show", {}, function()
     terminalOutput(("Total power output: %f"):format(total))
 end)
 
-command("power-cutoff", "show", {"system-name"}, function(systemName)
+command("power-cutoff", "show", {"SYSTEMNAME"}, function(systemName)
     --terminalOutput("Power-cutoff for %s: %f\n")
 end)
 
-command("power-cutoff", "set", {"system-name", "percentage"}, function(systemName, percentage)
+command("power-cutoff", "set", {"SYSTEMNAME", "PERCENTAGE"}, function(systemName, percentage)
 
 end)
+
+manual("reactor", [[
+The reactor SR-388 is made up a grid of fusion cells.
+]])
