@@ -66,6 +66,7 @@ bool Server::run(const std::string& host, Port port)
             time_ += dt;
             frameCounter_++;
         }
+        SDL_Delay(1);
     }
 
     for (auto& player : players_)
