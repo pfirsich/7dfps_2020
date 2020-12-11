@@ -8,7 +8,6 @@
 InputManager::InputState::InputState()
     : keyboardState(SDL_GetKeyboardState(nullptr))
 {
-    SDL_SetRelativeMouseMode(SDL_TRUE);
     mouseButtonState = SDL_GetRelativeMouseState(&mouseRelX, &mouseRelY);
 }
 
@@ -17,6 +16,11 @@ void InputManager::update()
     inputStates.insert(inputStates.begin(), InputState());
     while (inputStates.size() > numFrames)
         inputStates.pop_back();
+}
+
+InputManager::InputManager()
+{
+    SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
 const InputManager::InputState& InputManager::getState(size_t pastFrame) const

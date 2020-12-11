@@ -1,5 +1,10 @@
 #include "client.hpp"
 
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl.h>
+#include <misc/cpp/imgui_stdlib.h>
+
 #include "constants.hpp"
 #include "gltfimport.hpp"
 #include "graphics.hpp"
@@ -9,6 +14,8 @@
 namespace {
 static bool debugCollisionGeometry = false;
 static bool debugRaycast = false;
+static bool debugSystems = false;
+static bool controlPlayer = true;
 }
 
 bool Client::run(const std::string& host, Port port)
@@ -18,6 +25,7 @@ bool Client::run(const std::string& host, Port port)
 
     glwx::Window::Properties props;
     props.msaaSamples = 8;
+    props.stencil = true;
     window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
     window_.maximize();
     window_.setSwapInterval(0);
@@ -25,6 +33,12 @@ bool Client::run(const std::string& host, Port port)
     glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplSDL2_InitForOpenGL(window_.getSdlWindow(), window_.getSdlGlContext());
+    ImGui_ImplOpenGL3_Init("#version 150");
 
     InputManager::instance().update(); // Initialize data for first frame
 
@@ -34,11 +48,6 @@ bool Client::run(const std::string& host, Port port)
 #endif
 
     shipSystems_.push_back(std::make_unique<LuaShipSystem>("reactor", "media/systems/reactor.lua"));
-    fmt::print("battery: {}\n", shipSystems_[0]->getSensor("battery-level"));
-    MessageBus::instance().registerEndpoint("dummy");
-    MessageBus::instance().send(
-        "dummy", "reactor", MessageBus::Message { "requestEnergy", { 1.31415f } });
-    shipSystems_[0]->executeCommand("power-output show");
 
     skybox_ = std::make_unique<Skybox>();
     if (!skybox_->load("media/skybox/1.png", "media/skybox/2.png", "media/skybox/3.png",
@@ -160,6 +169,10 @@ bool Client::run(const std::string& host, Port port)
 
     enet_peer_disconnect_now(serverPeer_, 0);
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
     return true;
 }
 
@@ -174,12 +187,20 @@ void Client::processSdlEvents()
 {
     static SDL_Event event;
     while (SDL_PollEvent(&event) != 0) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
         switch (event.type) {
         case SDL_QUIT:
             running_ = false;
             break;
         case SDL_KEYDOWN:
             switch (event.key.keysym.scancode) {
+            case SDL_SCANCODE_S:
+                if (event.key.keysym.mod & KMOD_CTRL) {
+                    debugSystems = !debugSystems;
+                    controlPlayer = !debugSystems;
+                    SDL_SetRelativeMouseMode(controlPlayer ? SDL_TRUE : SDL_FALSE);
+                }
+                break;
 #ifndef NDEBUG
             case SDL_SCANCODE_ESCAPE:
                 running_ = false;
@@ -256,7 +277,8 @@ void Client::handleInteractions()
 void Client::update(float dt)
 {
     InputManager::instance().update();
-    playerControlSystem(world_, dt);
+    if (controlPlayer)
+        playerControlSystem(world_, dt);
     integrationSystem(world_, dt);
     handleInteractions();
     for (const auto& sys : shipSystems_)
@@ -371,6 +393,39 @@ void Client::draw()
         renderSystem(world_, projection_, cameraTransform);
         skybox_->draw(projection_, cameraTransform);
     }
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame(window_.getSdlWindow());
+    ImGui::NewFrame();
+
+    if (debugSystems) {
+        static std::unordered_map<std::string, std::string> commandInputs;
+        // ImGui::ShowDemoWindow();
+
+        for (auto& sys : shipSystems_) {
+            ImGui::Begin(sys->getName().c_str());
+            auto& input = commandInputs[sys->getName()];
+            /*const auto headerName = fmt::format("{} - {}", sys->getName(), "Sensors");
+            if (ImGui::CollapsingHeader(headerName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                for (const auto& id : sys->getSensors()) {
+                    ImGui::Text("%s: %f", id.c_str(), sys->getSensor(id));
+                }
+            }*/
+            ImGui::BeginChild("Child",
+                ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 60));
+            ImGui::TextUnformatted(sys->getTerminalOutput().c_str());
+            ImGui::EndChild();
+            if (ImGui::InputText("Execute", &input, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                sys->executeCommand(input);
+                input = "";
+                ImGui::SetKeyboardFocusHere(-1);
+            }
+            ImGui::End();
+        }
+    }
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     window_.swap();
 }

@@ -29,7 +29,7 @@ public:
     const InputState& getState(size_t pastFrame = 0) const;
 
 private:
-    InputManager() = default;
+    InputManager();
 
     // index 0 is current frame, index n is n frames in the past
     std::vector<InputState> inputStates;

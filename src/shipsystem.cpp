@@ -143,14 +143,6 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
 
     const auto& cmdName = toLower(args[0]);
 
-    /*if (cmdName == "man" || cmdName == "manual") {
-        executeManCommand(args);
-        return;
-    } else if (cmdName == "sensor") {
-        executeSensorCommand(args);
-        return;
-    } else if (cmdName == "")*/
-
     const auto idx = findCommand(cmdName);
     if (!idx) {
         terminalOutput(fmt::format("Command '{}' not found.\nTry: manual\n", args[0]));
@@ -246,7 +238,14 @@ void ShipSystem::log(const LogId& id, LogLevel level, std::string text)
 void ShipSystem::terminalOutput(const std::string& text)
 {
     terminalOutput_.append(text);
+    if (text.back() != '\n')
+        terminalOutput_.push_back('\n');
     truncateTerminalOutput();
+}
+
+const std::string& ShipSystem::getTerminalOutput() const
+{
+    return terminalOutput_;
 }
 
 std::optional<size_t> ShipSystem::Command::findSubCommand(const std::string& name) const
@@ -299,8 +298,17 @@ namespace {
 int solExceptionHandler(lua_State* L, sol::optional<const std::exception&> /*maybeException*/,
     sol::string_view description)
 {
-    fmt::print(stderr, "YO SOL Exception: {}\n", description);
+    fmt::print(stderr, "sol3 Exception: {}\n", description);
     return sol::stack::push(L, description);
+}
+
+sol::protected_function_result&& checkError(sol::protected_function_result&& res)
+{
+    if (!res.valid()) {
+        fmt::print(stderr, "Lua Error: {}\n", res.get<sol::error>().what());
+        assert(false);
+    }
+    return std::move(res);
 }
 }
 
@@ -314,32 +322,37 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
 
     lua.script(luaLib);
 
-    lua["tick"].set_function(
-        [this](float interval, sol::function func) { addTick(interval, [func]() { func(); }); });
+    lua["tick"].set_function([this](float interval, sol::function func) {
+        addTick(interval, [func]() { checkError(func()); });
+    });
     lua["sensor"].set_function([this](const std::string& sensorId, sol::function func) {
-        addSensor(sensorId, [func]() {
-            const float val = func();
-            return val;
-        });
+        addSensor(sensorId, [func]() { return checkError(func()).get<float>(); });
     });
     lua["subscribe"].set_function([this](const std::string& messageId, sol::function func) {
         MessageBus::instance().subscribe(getName(), messageId,
             [func](const std::string& sender, const MessageBus::Message& msg) {
-                func(sender, sol::as_args(msg.fields));
+                checkError(func(sender, sol::as_args(msg.fields)));
             });
     });
     lua["manual"].set_function([this](const std::optional<std::string>& name,
                                    const std::string& text) { addManual(name, text); });
-    lua["command"].set_function(
-        [this](const std::string& command, const std::optional<std::string>& subCommand,
-            sol::table arguments, sol::function func) {
-            std::vector<std::string> args;
-            for (size_t i = 0; i < arguments.size(); ++i) {
-                args.push_back(arguments[i + 1]);
-            }
-            addCommand(command, subCommand, args,
-                [func](const std::vector<CommandArg>& args) { func(sol::as_args(args)); });
-        });
+    lua["command"].set_function([this](const std::string& command,
+                                    const std::optional<std::string>& subCommand,
+                                    sol::table arguments, sol::function func) {
+        std::vector<std::string> args;
+        for (size_t i = 0; i < arguments.size(); ++i) {
+            args.push_back(arguments[i + 1]);
+        }
+        addCommand(command, subCommand, args,
+            [func](const std::vector<CommandArg>& args) { checkError(func(sol::as_args(args))); });
+    });
+    lua["terminalOutput"].set_function([this](const std::string& text) { terminalOutput(text); });
+    lua["setAlarm"].set_function([this]() { alarm = true; });
+    lua["hasAlarm"].set_function([this]() { return alarm; });
+    lua["clearAlarm"].set_function([this]() { alarm = false; });
+    lua["log"].set_function([this](const std::string& logId, int level, const std::string& text) {
+        log(logId, static_cast<LogLevel>(level), text);
+    });
 
     lua.script_file(scriptPath.u8string());
 }

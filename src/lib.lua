@@ -23,4 +23,11 @@ end
 function rescale(val, fromA, fromB, toA, toB)
     return lerp(toA, toB, unlerp(val, fromA, fromB))
 end
+
+logLevel = {
+    DEBUG = 0,
+    INFO = 1,
+    WARNING = 2,
+    ERROR = 3,
+}
 --)luastring"--"

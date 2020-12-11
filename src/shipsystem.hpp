@@ -84,7 +84,7 @@ public:
     using CommandFunc = std::function<void(const std::vector<CommandArg>&)>;
     using LogId = std::string;
 
-    enum class LogLevel { Debug, Info, Warning, Error };
+    enum class LogLevel { Debug = 0, Info, Warning, Error };
 
     static constexpr auto DefaultManual = "<empty>";
 
@@ -111,6 +111,7 @@ public:
     void log(const LogId& log, LogLevel level, std::string text);
 
     void terminalOutput(const std::string& text);
+    const std::string& getTerminalOutput() const;
 
     const std::string& getName() const;
 

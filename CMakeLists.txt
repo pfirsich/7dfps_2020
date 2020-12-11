@@ -44,6 +44,19 @@ set(SRC
 )
 list(TRANSFORM SRC PREPEND src/)
 
+set(IMGUI_SRC
+  backends/imgui_impl_opengl3.cpp
+  backends/imgui_impl_sdl.cpp
+  imgui_demo.cpp
+  imgui_draw.cpp
+  imgui_tables.cpp
+  imgui_widgets.cpp
+  imgui.cpp
+  misc/cpp/imgui_stdlib.cpp
+)
+list(TRANSFORM IMGUI_SRC PREPEND deps/imgui/)
+list(APPEND SRC ${IMGUI_SRC})
+
 find_package(fmt CONFIG REQUIRED)
 find_package(ENet REQUIRED)
 find_package(Threads REQUIRED)
@@ -64,6 +77,7 @@ target_include_directories(7dfps PRIVATE deps/gltf)
 target_include_directories(7dfps PRIVATE ${ENET_INCLUDE_DIRS})
 target_include_directories(7dfps PRIVATE ${DOCOPT_INCLUDE_DIRS})
 target_include_directories(7dfps SYSTEM PRIVATE deps/sol2/single/include)
+target_include_directories(7dfps SYSTEM PRIVATE deps/imgui deps/imgui/backends)
 target_link_libraries(7dfps PRIVATE glwx gltf)
 target_link_libraries(7dfps PRIVATE fmt::fmt)
 target_link_libraries(7dfps PRIVATE ${ENET_LIBRARIES})
