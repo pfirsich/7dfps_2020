@@ -302,6 +302,14 @@ void Client::handleInteractions()
             linked->entity.add<comp::RenderHighlight>();
             if (interact) {
                 if (const auto ladder = hit->entity.getPtr<comp::Ladder>()) {
+                    // Sometimes we use a ladder, when we are too far away from it and end up
+                    // teleporting into a wall.
+                    // So first move closer to the ladder (along the ray).
+                    const auto& collider = player_.get<comp::CylinderCollider>();
+                    while (!findFirstCollision(world_, player_, trafo, collider)) {
+                        trafo.move(rayDir * 0.05f);
+                    }
+
                     const auto delta = ladder->dir == comp::Ladder::Dir::Up ? 1.0f : -1.0f;
                     trafo.setPosition(
                         trafo.getPosition() + glm::vec3(0.0f, delta * floorHeight, 0.0f));
