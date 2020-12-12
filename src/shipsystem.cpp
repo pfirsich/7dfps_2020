@@ -90,15 +90,19 @@ void MessageBus::send(const EndpointId& sender, const Endpoint& destination, con
     destination.subscriptions[*idx].messageHandler(sender, message);
 }
 
+std::vector<std::string> ShipSystem::allSystems;
+
 ShipSystem::ShipSystem(const Name& name)
     : name_(name)
 {
     MessageBus::instance().registerEndpoint(name);
+    allSystems.push_back(name);
     terminalOutput("Type 'manual' to see available commands");
 }
 
 ShipSystem::~ShipSystem()
 {
+    allSystems.erase(std::remove(allSystems.begin(), allSystems.end(), name_), allSystems.end());
 }
 
 void ShipSystem::addTick(float interval, TickFunction func)
@@ -135,6 +139,72 @@ void ShipSystem::addCommand(const std::string& name, const std::optional<std::st
         return;
     }
     command.subCommands.push_back(Command::SubCommand { subName, arguments, func });
+}
+
+bool ShipSystem::isValidSystemName(const std::string& name)
+{
+    return std::find(allSystems.begin(), allSystems.end(), name) != allSystems.end();
+}
+
+bool ShipSystem::isValidSensorName(const std::string& name) const
+{
+    for (const auto& sensor : sensors_) {
+        if (sensor.id == name)
+            return true;
+    }
+    return false;
+}
+
+std::optional<std::vector<ShipSystem::CommandArg>> ShipSystem::parseCommandArgs(
+    const ShipSystem::Command& command, const ShipSystem::Command::SubCommand& subCommand,
+    const std::vector<std::string>& args, size_t argsStart)
+{
+    if (args.size() - argsStart != subCommand.arguments.size()) {
+        terminalOutput(
+            fmt::format("Invalid number of arguments\nUsage: {}\n", getUsage(command, subCommand)));
+        return std::nullopt;
+    }
+    std::vector<ShipSystem::CommandArg> parsed;
+    for (size_t i = 0; i < subCommand.arguments.size(); ++i) {
+        const auto& argDef = subCommand.arguments[i];
+        const auto& arg = args[i + argsStart];
+        if (argDef == "SENSORNAME") {
+            if (!isValidSensorName(arg)) {
+                terminalOutput(
+                    "Invalid sensor name\nType 'sensor' to see list of available sensors\n");
+                return std::nullopt;
+            }
+            parsed.push_back(arg);
+        } else if (argDef == "SYSTEMNAME") {
+            if (!isValidSystemName(arg)) {
+                terminalOutput("Invalid system name\nValid system names are:\n");
+                for (const auto& name : allSystems)
+                    terminalOutput(name + "\n");
+                return std::nullopt;
+            }
+            parsed.push_back(arg);
+        } else if (argDef == "PERCENTAGE") {
+            const auto f = parseFloat(arg);
+            if (!f || f < 0.0f || f > 100.0f) {
+                terminalOutput("Invalid percentage value\n");
+                return std::nullopt;
+            }
+            parsed.push_back(*f);
+        } else if (argDef == "STRING") {
+            parsed.push_back(arg);
+        } else if (argDef == "FLOAT") {
+            const auto f = parseFloat(arg);
+            if (!f) {
+                terminalOutput("Invalid float value\n");
+                return std::nullopt;
+            }
+            parsed.push_back(*f);
+        } else {
+            fmt::print(stderr, "UNKNOWN COMMAND ARGUMENT '{}'\n", argDef);
+            parsed.push_back(arg);
+        }
+    }
+    return parsed;
 }
 
 void ShipSystem::executeCommand(const std::vector<std::string>& args)
@@ -174,7 +244,11 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
     const auto subIdx = command.findSubCommand(subName);
     if (!subIdx) {
         if (noSubIdx) {
-            command.subCommands[*noSubIdx].handler({});
+            const auto& subCommand = command.subCommands[*noSubIdx];
+            const auto parsed = parseCommandArgs(command, subCommand, args, 1);
+            if (!parsed)
+                return;
+            subCommand.handler(*parsed);
             return;
         } else {
             terminalOutput("Available sub commands:\n");
@@ -184,7 +258,11 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
             return;
         }
     }
-    command.subCommands[*subIdx].handler({});
+    const auto& subCommand = command.subCommands[*subIdx];
+    const auto parsed = parseCommandArgs(command, subCommand, args, 2);
+    if (!parsed)
+        return;
+    subCommand.handler(*parsed);
 }
 
 void ShipSystem::executeCommand(const std::string& command)
@@ -213,13 +291,7 @@ void ShipSystem::manCommand()
     terminalOutput("Available commands:\n");
     for (const auto& command : commands_) {
         for (const auto& subCommand : command.subCommands) {
-            std::string args = "";
-            for (const auto& arg : subCommand.arguments) {
-                args.push_back(' ');
-                args.append(arg);
-            }
-            const auto text = fmt::format("{} {}{}", command.name, subCommand.name, args);
-            terminalOutput(text);
+            terminalOutput(getUsage(command, subCommand));
         }
     }
 }
@@ -368,6 +440,17 @@ size_t ShipSystem::getTotalTerminalOutputSize() const
 size_t ShipSystem::getTerminalOutputStart() const
 {
     return terminalOutputStart_;
+}
+
+std::string ShipSystem::getUsage(
+    const ShipSystem::Command& command, const ShipSystem::Command::SubCommand& subCommand) const
+{
+    std::string args = "";
+    for (const auto& arg : subCommand.arguments) {
+        args.push_back(' ');
+        args.append(arg);
+    }
+    return fmt::format("{} {}{}", command.name, subCommand.name, args);
 }
 
 std::optional<size_t> ShipSystem::Command::findSubCommand(const std::string& name) const

@@ -28,6 +28,8 @@ std::optional<T> parseInt(const std::string& str, int base = 10)
     }
 }
 
+std::optional<float> parseFloat(const std::string& str);
+
 std::string hexStream(const uint8_t* data, size_t len);
 
 std::string toLower(const std::string& str);

@@ -20,6 +20,19 @@ float rescale(float val, float fromA, float fromB, float toA, float toB)
     return lerp(toA, toB, unlerp(val, fromA, fromB));
 }
 
+std::optional<float> parseFloat(const std::string& str)
+{
+    try {
+        size_t pos = 0;
+        const auto val = std::stof(str, &pos);
+        if (pos < str.size())
+            return std::nullopt;
+        return val;
+    } catch (const std::exception& exc) {
+        return std::nullopt;
+    }
+}
+
 std::string hexStream(const uint8_t* data, size_t len)
 {
     std::string str;

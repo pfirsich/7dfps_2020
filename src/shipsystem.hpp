@@ -130,6 +130,8 @@ public:
     void clearLambdas();
 
 private:
+    static std::vector<std::string> allSystems;
+
     struct Tick {
         std::function<void(void)> handler;
         float interval;
@@ -141,6 +143,8 @@ private:
             std::string name;
             std::vector<std::string> arguments;
             std::function<void(const std::vector<CommandArg>&)> handler;
+
+            std::string getUsage() const;
         };
         std::vector<SubCommand> subCommands;
         std::string name;
@@ -166,10 +170,18 @@ private:
         std::string id;
     };
 
+    static bool isValidSystemName(const std::string& name);
+
+    std::string getUsage(const Command& command, const Command::SubCommand& subCommand) const;
+    bool isValidSensorName(const std::string& name) const;
+
     std::optional<size_t> findCommand(const std::string& name) const;
     std::optional<size_t> findSensor(const SensorId& id) const;
     std::optional<size_t> findLog(const LogId& id) const;
 
+    std::optional<std::vector<ShipSystem::CommandArg>> parseCommandArgs(
+        const ShipSystem::Command& command, const ShipSystem::Command::SubCommand& subCommand,
+        const std::vector<std::string>& args, size_t argsStart);
     void sensorShowCommand(const std::vector<CommandArg>& arg);
     void manCommand();
 
