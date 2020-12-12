@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.0)
 
 set(SOLOUD_REPO_PATH repo)
 
@@ -198,8 +198,13 @@ else()
 endif()
 
 target_include_directories(soloud PUBLIC ${SOLOUD_REPO_PATH}/include)
-target_include_directories(soloud PUBLIC ${SDL2_INCLUDE_DIRS})
-target_link_libraries (soloud ${SDL2_LIBRARIES})
+
 target_compile_definitions(soloud PRIVATE WITH_SDL2_STATIC)
+target_include_directories(soloud PRIVATE ${SDL2_INCLUDE_DIRS})
+if(SDL2_LIBRARIES) # for older CMake files (Ubuntu 20.04 package)
+  target_link_libraries(soloud PRIVATE ${SDL2_LIBRARIES})
+else() # for newer CMake files (incl. vcpkg)
+  target_link_libraries(soloud PRIVATE SDL2::SDL2 SDL2::SDL2main)
+endif()
 
 INSTALL(FILES ${TARGET_HEADERS} DESTINATION include/soloud)
