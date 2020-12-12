@@ -427,8 +427,7 @@ ecs::EntityHandle Client::findTerminal(const std::string& system)
     ecs::EntityHandle found;
     world_.forEachEntity<comp::Terminal>(
         [&system, &found](ecs::EntityHandle entity, const comp::Terminal& terminal) {
-            if (terminal.systemName == system) {
-                assert(!found);
+            if (!found && terminal.systemName == system) {
                 found = entity.get<comp::VisualLink>().entity;
             }
         });

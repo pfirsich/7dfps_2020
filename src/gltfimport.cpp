@@ -236,6 +236,8 @@ struct GltfImportCache {
                         = dir == "up" ? comp::Ladder::Dir::Up : comp::Ladder::Dir::Down;
                 }
                 if (obj.count("terminal")) {
+                    fmt::print("Terminal '{}': {}\n", std::get<std::string>(obj.at("terminal")),
+                        *node.name);
                     entity.add<comp::Terminal>().systemName
                         = std::get<std::string>(obj.at("terminal"));
                 }
