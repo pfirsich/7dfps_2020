@@ -54,7 +54,11 @@ jobs:
         mkdir artifact-out
         cp ./build/Release/7dfps.exe artifact-out/
         cp ./build/Release/*.dll artifact-out/
-        cp -R media/ artifact-out/
+        mkdir artifact-out/media
+        cp media/*.glb artifact-out/media
+        cp -R media/sounds artifact-out/media/sounds
+        cp -R media/systems artifact-out/media/systems
+        cp -R media/skybox artifact-out/media/skybox
     - name: Artifact
       uses: actions/upload-artifact@v2
       with:
