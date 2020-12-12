@@ -26,8 +26,12 @@ bool Server::run(const std::string& host, Port port)
 
     fmt::print("Loading map..\n");
 
-    if (!loadMap("media/ship.glb", world_, true))
+    auto shipGltf = GltfFile::load("media/ship.glb");
+    if (!shipGltf) {
+        fmt::print("Could not load 'media/ship.glb'\n");
         return false;
+    }
+    shipGltf->instantiate(world_, true);
     world_.flush();
 
     fmt::print("Done\n");

@@ -90,25 +90,38 @@ bool Client::run(const std::string& host, Port port)
         return false;
     };
 
-    if (!loadMap("media/ship.glb", world_)) {
+    auto shipGltf = GltfFile::load("media/ship.glb");
+    if (!shipGltf) {
         fmt::print("Could not load 'media/ship.glb'\n");
         return false;
     }
+    shipGltf->instantiate(world_);
 
-    playerMesh_ = loadMesh("media/player.glb");
-    if (!playerMesh_) {
+    auto playerGltf = GltfFile::load("media/player.glb");
+    if (!playerGltf) {
         fmt::print("Could not load 'media/player.glb'\n");
         return false;
     }
 
-    const auto hitMarkerMesh = loadMesh("media/marker.glb");
-    if (!hitMarkerMesh) {
+    static constexpr std::array playerMeshNames = { "SK_Character_Alien_Male_01.001",
+        "SK_Character_Hacker_Female_01.001", "SK_Character_Muscle_Male_01.001", "robot_mesh.001" };
+    for (const auto& name : playerMeshNames) {
+        auto mesh = playerGltf->getMesh(name);
+        if (!mesh) {
+            fmt::print("Mesh '{}' not found in player.glb\n", name);
+            return false;
+        }
+        playerMeshes_.push_back(mesh);
+    }
+
+    auto hitMarkerGltf = GltfFile::load("media/marker.glb");
+    if (!hitMarkerGltf) {
         fmt::print("Could not load 'media/marker.glb\n");
         return false;
     }
     hitMarker_ = world_.createEntity();
     hitMarker_.add<comp::Transform>();
-    hitMarker_.add<comp::Mesh>(hitMarkerMesh);
+    hitMarker_.add<comp::Mesh>(hitMarkerGltf->getMesh("Sphere"));
 
     player_ = world_.createEntity();
     player_.add<comp::Transform>();
@@ -432,9 +445,9 @@ void Client::addPlayer(PlayerId id)
 {
     auto player = world_.createEntity();
     player.add<comp::Hierarchy>();
-    player.add<comp::Transform>();
+    player.add<comp::Transform>().setScale(glm::vec3(2.1f));
     player.add<comp::CylinderCollider>(comp::CylinderCollider { playerRadius, cameraOffsetY });
-    player.add<comp::Mesh>(playerMesh_);
+    player.add<comp::Mesh>(playerMeshes_[id % playerMeshes_.size()]);
     players_.emplace(id, player);
 }
 

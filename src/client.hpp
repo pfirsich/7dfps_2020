@@ -83,7 +83,7 @@ private:
     PlayerState state_;
     std::unordered_map<PlayerId, ecs::EntityHandle> players_; // excludes self
     std::unordered_map<ShipSystem::Name, TerminalData> terminalData_;
-    std::shared_ptr<Mesh> playerMesh_;
+    std::vector<std::shared_ptr<Mesh>> playerMeshes_;
     std::unique_ptr<Skybox> skybox_;
     ecs::EntityHandle player_;
     ecs::EntityHandle hitMarker_;

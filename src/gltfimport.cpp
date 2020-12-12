@@ -28,8 +28,9 @@ std::unordered_map<std::string, size_t> attributeLocations = {
     { "JOINTS_0", AttributeLocations::Joints0 },
     { "WEIGHTS_0", AttributeLocations::Weights0 },
 };
+}
 
-struct GltfImportCache {
+struct GltfFile::ImportCache {
     std::unordered_map<gltf::NodeIndex, ecs::EntityHandle> entityMap;
     std::unordered_map<gltf::MeshIndex, std::shared_ptr<Mesh>> meshMap;
     std::unordered_map<gltf::BufferViewIndex, std::shared_ptr<glw::Buffer>> bufferMap;
@@ -257,36 +258,42 @@ struct GltfImportCache {
         return entity;
     }
 };
+
+GltfFile::GltfFile(gltf::Gltf&& gltfFile)
+    : gltfFile(std::move(gltfFile))
+    , importCache(std::make_unique<GltfFile::ImportCache>())
+{
 }
 
-std::shared_ptr<Mesh> loadMesh(const fs::path& path)
+// This fucking default destructor has to be in the .cpp file, because if you write `~GltfFile() =
+// default;` in the header (how could you?) it will just not compile! This is such an idiotic thing
+// and I am so fucking angry at this bullshit.
+GltfFile::~GltfFile()
 {
-    const auto gltfFileOpt = gltf::load(path);
-    if (!gltfFileOpt) {
-        return nullptr;
-    }
-    const auto& gltfFile = *gltfFileOpt;
-    assert(gltfFile.scenes.size() == 1);
-
-    GltfImportCache importCache;
-    assert(gltfFile.nodes.size() == 1 && gltfFile.nodes[0].mesh);
-    return importCache.getMesh(gltfFile, *gltfFile.nodes[0].mesh);
 }
 
-bool loadMap(const fs::path& path, ecs::World& world, bool server)
+void GltfFile::instantiate(ecs::World& world, bool server) const
 {
-    const auto gltfFileOpt = gltf::load(path);
-    if (!gltfFileOpt) {
-        return false;
-    }
-    const auto& gltfFile = *gltfFileOpt;
-    assert(gltfFile.scenes.size() == 1);
-
-    GltfImportCache importCache;
-
     for (const auto nodeIndex : gltfFile.scenes[0].nodes) {
-        importCache.getEntity(world, gltfFile, nodeIndex, server);
+        importCache->getEntity(world, gltfFile, nodeIndex, server);
     }
+}
 
-    return true;
+std::shared_ptr<Mesh> GltfFile::getMesh(const std::string& name) const
+{
+    for (size_t i = 0; i < gltfFile.meshes.size(); ++i) {
+        if (gltfFile.meshes[i].name && *gltfFile.meshes[i].name == name)
+            return importCache->getMesh(gltfFile, i);
+    }
+    return nullptr;
+}
+
+std::optional<GltfFile> GltfFile::load(const fs::path& path)
+{
+    auto gltfFileOpt = gltf::load(path);
+    if (!gltfFileOpt) {
+        return std::nullopt;
+    }
+    assert(gltfFileOpt->scenes.size() == 1);
+    return GltfFile(std::move(*gltfFileOpt));
 }
