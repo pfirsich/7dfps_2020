@@ -21,22 +21,33 @@ Example response:
 
 ```json
 {
-  "sfo3": "speedtest-sfo3.digitalocean.com",
-  "nyc1": "speedtest-nyc1.digitalocean.com",
-  "ams3": "speedtest-ams3.digitalocean.com",
-  "fra1": "speedtest-fra1.digitalocean.com",
-  "sgp1": "speedtest-sgp1.digitalocean.com",
-  "blr1": "speedtest-blr1.digitalocean.com"
+  "sfo3": {
+    "pingTest": "speedtest-sfo3.digitalocean.com",
+    "name": "San Francisco, United States 3"
+  },
+  "nyc1": {
+    "pingTest": "speedtest-nyc1.digitalocean.com",
+    "name": "New York City, United States 1"
+  },
+  "fra1": {
+    "pingTest": "speedtest-fra1.digitalocean.com",
+    "name": "Frankfurt, Germany 1"
+  },
+  "sgp1": {
+    "pingTest": "speedtest-sgp1.digitalocean.com",
+    "name": "Singapore 1"
+  }
 }
 ```
 
 ### Create Game
 
 ```sh
-curl -X POST http://localhost:5000/games -d '{"region": "fra1"}' -H "Content-Type: application/json" | jq
+curl -X POST http://localhost:5000/games -d '{"region": "fra1", "version": "stable"}' -H "Content-Type: application/json" | jq
 ```
 
-Make sure region is a valid region.
+Make sure `region` is a valid region.
+Optionally: `version` is can be one of `jam`, `stable`, `dev`.
 
 Example response:
 

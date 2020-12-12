@@ -1,15 +1,54 @@
 module.exports = {
-  // sfo1: "speedtest-sfo1.digitalocean.com",
-  // sfo2: "speedtest-sfo2.digitalocean.com",
-  sfo3: "speedtest-sfo3.digitalocean.com",
-  nyc1: "speedtest-nyc1.digitalocean.com",
-  // nyc2: "speedtest-nyc2.digitalocean.com",
-  // nyc3: "speedtest-nyc3.digitalocean.com",
-  // tor1: "speedtest-tor1.digitalocean.com",
-  // ams2: "speedtest-ams2.digitalocean.com",
-  // ams3: "speedtest-ams3.digitalocean.com",
-  // lon1: "speedtest-lon1.digitalocean.com",
-  fra1: "speedtest-fra1.digitalocean.com",
-  sgp1: "speedtest-sgp1.digitalocean.com",
-  blr1: "speedtest-blr1.digitalocean.com",
+  // sfo1: {
+  //   pingTest: "speedtest-sfo1.digitalocean.com",
+  //   name: "San Francisco, United States 1",
+  // },
+  // sfo2: {
+  //   pingTest: "speedtest-sfo2.digitalocean.com",
+  //   name: "San Francisco, United States 2",
+  // },
+  sfo3: {
+    pingTest: "speedtest-sfo3.digitalocean.com",
+    name: "San Francisco, United States 3",
+  },
+  nyc1: {
+    pingTest: "speedtest-nyc1.digitalocean.com",
+    name: "New York City, United States 1",
+  },
+  // nyc2: {
+  //   pingTest: "speedtest-nyc2.digitalocean.com",
+  //   name: "New York City, United States 2",
+  // },
+  // nyc3: {
+  //   pingTest: "speedtest-nyc3.digitalocean.com",
+  //   name: "New York City, United States 3",
+  // },
+  // tor1: {
+  //   pingTest: "speedtest-tor1.digitalocean.com",
+  //   name: "Toronto, Canada 1",
+  // },
+  // ams2: {
+  //   pingTest: "speedtest-ams2.digitalocean.com",
+  //   name: "Amsterdam, the Netherlands 2",
+  // },
+  // ams3: {
+  //   pingTest: "speedtest-ams3.digitalocean.com",
+  //   name: "Amsterdam, the Netherlands 3",
+  // },
+  // lon1: {
+  //   pingTest: "speedtest-lon1.digitalocean.com",
+  //   name: "London, United Kingdom 1",
+  // },
+  fra1: {
+    pingTest: "speedtest-fra1.digitalocean.com",
+    name: "Frankfurt, Germany 1",
+  },
+  sgp1: {
+    pingTest: "speedtest-sgp1.digitalocean.com",
+    name: "Singapore 1",
+  },
+  // blr1: {
+  //   pingTest: "speedtest-blr1.digitalocean.com",
+  //   name: "Bangalore, India 1",
+  // },
 };
