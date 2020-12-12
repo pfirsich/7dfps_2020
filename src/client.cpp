@@ -68,6 +68,9 @@ bool Client::run(const std::string& host, Port port)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    auto& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
     ImGui::StyleColorsDark();
     ImGui_ImplSDL2_InitForOpenGL(window_.getSdlWindow(), window_.getSdlGlContext());
     ImGui_ImplOpenGL3_Init("#version 150");

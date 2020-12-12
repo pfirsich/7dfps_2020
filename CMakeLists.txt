@@ -47,7 +47,6 @@ list(TRANSFORM SRC PREPEND src/)
 
 set(IMGUI_SRC
   backends/imgui_impl_opengl3.cpp
-  backends/imgui_impl_sdl.cpp
   imgui_demo.cpp
   imgui_draw.cpp
   imgui_tables.cpp
@@ -56,6 +55,7 @@ set(IMGUI_SRC
   misc/cpp/imgui_stdlib.cpp
 )
 list(TRANSFORM IMGUI_SRC PREPEND deps/imgui/)
+list(APPEND IMGUI_SRC src/imgui_impl_sdl.cpp)
 list(APPEND SRC ${IMGUI_SRC})
 
 find_package(fmt CONFIG REQUIRED)
