@@ -1,5 +1,7 @@
 const { NodeSSH } = require("node-ssh");
 
+const config = require("./config");
+
 const connections = {};
 
 async function sleep(time) {
@@ -11,10 +13,9 @@ async function sleep(time) {
 function gameCommand(port, gameCode) {
   // const cmd = `nc -u -l ${port}`;
   // const cmd = `docker run -p ${port}:${port}/udp -t ${image} build/7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
-  const cmd = `cd /home/morel/7dfps && ./7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
 
-  // return `mkdir -p /var/log/7dfps/games && ${cmd} | tee /var/log/7dfps/games/${gameCode}.log`;
-  return cmd;
+  const cmd = `cd /home/morel/7dfps && ./7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
+  return `mkdir -p /var/log/7dfps/games && ${cmd} | tee /var/log/7dfps/games/${gameCode}.log`;
 }
 
 function spawnGameProcess(ssh, gameInfo, onExitGame) {
@@ -68,7 +69,7 @@ async function waitForShh({ host, port }) {
     try {
       await ssh.connect({
         host,
-        username: "morel",
+        username: config.sshUser,
         privateKey: `${process.env.HOME}/.ssh/id_rsa`,
         passphrase: process.env.SSH_PASSPHRASE,
       });

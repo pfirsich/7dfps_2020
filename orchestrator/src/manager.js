@@ -17,16 +17,16 @@ async function sleep(time) {
   });
 }
 
-function initScript(vm) {
-  return `
-  mkdir -p /var/log/7dfps/;
-  mkdir -p /usr/share/7dfps/;
-
-  echo ${vm.vmId} > /usr/share/7dfps/vmId;
-
-  yum install -y nc docker | tee /var/log/7dfps/install.log;
-  `;
-}
+// function initScript(vm) {
+//   return `
+//   mkdir -p /var/log/7dfps/;
+//   mkdir -p /usr/share/7dfps/;
+//
+//   echo ${vm.vmId} > /usr/share/7dfps/vmId;
+//
+//   yum install -y nc docker | tee /var/log/7dfps/install.log;
+//   `;
+// }
 
 async function waitForAction(actionId) {
   const waitTimeSec = 5;
@@ -76,7 +76,7 @@ async function startVm({ region }) {
     ssh_keys: config.vmSshKeys,
     backups: false,
     ipv6: true,
-    user_data: initScript(vm),
+    // user_data: initScript(vm),
     monitoring: true,
     volumes: null,
     tags: [...config.vmTags, `vmId:${vm.vmId}`],

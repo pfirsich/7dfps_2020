@@ -5,6 +5,9 @@ module.exports = {
 
   gameCodeSize: 2 ** 24,
 
+  // sshUser: "morel",
+  sshUser: "root",
+
   vmSize: "s-1vcpu-1gb",
   // vmImage: "centos-8-x64",
   // vmImage: "ubuntu-16-04-x32",
