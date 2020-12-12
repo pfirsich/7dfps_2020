@@ -3,6 +3,7 @@
 #include "components.hpp"
 #include "graphics.hpp"
 #include "physics.hpp"
+#include "shipsystem.hpp"
 
 namespace {
 template <typename T, typename Container>
@@ -233,6 +234,10 @@ struct GltfImportCache {
                     assert(dir == "up" || dir == "down");
                     entity.add<comp::Ladder>().dir
                         = dir == "up" ? comp::Ladder::Dir::Up : comp::Ladder::Dir::Down;
+                }
+                if (obj.count("terminal")) {
+                    entity.add<comp::Terminal>().systemName
+                        = std::get<std::string>(obj.at("terminal"));
                 }
             }
         } else {

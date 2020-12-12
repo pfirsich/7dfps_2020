@@ -18,6 +18,12 @@
 
 namespace fs = std::filesystem;
 
+namespace comp {
+struct Terminal {
+    std::string systemName;
+};
+}
+
 template <typename T, typename V, typename Func>
 std::optional<size_t> findField(const T& container, const V& fieldValue, Func&& func)
 {
@@ -115,6 +121,8 @@ public:
 
     void terminalOutput(const std::string& text);
     const std::string& getTerminalOutput() const;
+    size_t getTotalTerminalOutputSize() const;
+    size_t getTerminalOutputStart() const;
 
     const std::string& getName() const;
 
@@ -172,6 +180,8 @@ private:
     std::vector<Command> commands_;
     std::vector<Log> logs_;
     std::string terminalOutput_;
+    size_t totalTerminalOutputSize_ = 0;
+    size_t terminalOutputStart_ = 0;
     std::string terminalInput_;
     Name name_;
 };

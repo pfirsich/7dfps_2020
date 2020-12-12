@@ -341,15 +341,27 @@ std::string ShipSystem::getLogText(const LogId& id) const
 
 void ShipSystem::terminalOutput(const std::string& text)
 {
+    const auto beforeSize = terminalOutput_.size();
     terminalOutput_.append(text);
     if (text.back() != '\n')
         terminalOutput_.push_back('\n');
+    totalTerminalOutputSize_ += terminalOutput_.size() - beforeSize;
     truncateTerminalOutput();
 }
 
 const std::string& ShipSystem::getTerminalOutput() const
 {
     return terminalOutput_;
+}
+
+size_t ShipSystem::getTotalTerminalOutputSize() const
+{
+    return totalTerminalOutputSize_;
+}
+
+size_t ShipSystem::getTerminalOutputStart() const
+{
+    return terminalOutputStart_;
 }
 
 std::optional<size_t> ShipSystem::Command::findSubCommand(const std::string& name) const
@@ -376,9 +388,10 @@ void ShipSystem::truncateTerminalOutput()
 {
     if (terminalOutput_.size() > maxTerminalOutputSize) {
         auto count = terminalTruncateAmount;
-        while (count < terminalOutput_.size() && terminalOutput_[count] != '\n')
+        while (count < terminalOutput_.size() && terminalOutput_[count - 1] != '\n')
             count++;
-        terminalInput_.erase(0, count + 1);
+        terminalInput_.erase(0, count);
+        terminalOutputStart_ += count;
     }
 }
 

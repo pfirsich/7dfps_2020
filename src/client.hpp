@@ -18,6 +18,23 @@ public:
     bool run(const std::string& host, Port port);
 
 private:
+    struct MoveState {
+    };
+
+    struct TerminalState {
+        ecs::EntityHandle terminalEntity;
+        std::string systemName;
+        std::string terminalInput;
+        glm::vec3 startPos; // this sucks
+    };
+
+    using PlayerState = std::variant<MoveState, TerminalState>;
+
+    struct TerminalData {
+        std::string input;
+        std::string output;
+    };
+
     void resized(size_t width, size_t height);
 
     void processSdlEvents();
@@ -47,16 +64,23 @@ private:
         processMessage(frameNumber, message);
     }
 
+    ecs::EntityHandle findTerminal(const std::string& system);
+
     void processMessage(uint32_t frameNumber, const Message<MessageType::ServerHello>& message);
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerPlayerStateUpdate>& message);
+    void processMessage(
+        uint32_t frameNumber, const Message<MessageType::ServerInteractTerminal>& message);
+    void processMessage(
+        uint32_t frameNumber, const Message<MessageType::ServerUpdateTerminalOutput>& message);
 
     ENetPeer* serverPeer_ = nullptr;
     enet::Host host_;
     glwx::Window window_;
     ecs::World world_;
+    PlayerState state_;
     std::unordered_map<PlayerId, ecs::EntityHandle> players_; // excludes self
-    std::vector<std::unique_ptr<ShipSystem>> shipSystems_;
+    std::unordered_map<ShipSystem::Name, TerminalData> terminalData_;
     std::shared_ptr<Mesh> playerMesh_;
     std::unique_ptr<Skybox> skybox_;
     ecs::EntityHandle player_;

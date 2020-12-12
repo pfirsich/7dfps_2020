@@ -10,12 +10,11 @@
 #include "graphics.hpp"
 #include "physics.hpp"
 #include "shipsystem.hpp"
+#include "util.hpp"
 
 namespace {
 static bool debugCollisionGeometry = false;
 static bool debugRaycast = false;
-static bool debugSystems = false;
-static bool controlPlayer = true;
 }
 
 bool Client::run(const std::string& host, Port port)
@@ -48,8 +47,6 @@ bool Client::run(const std::string& host, Port port)
     // TODO: Somehow filter some output out, because it's too much to learn anything right now
     // glwx::debug::init();
 #endif
-
-    shipSystems_.push_back(std::make_unique<LuaShipSystem>("reactor", "media/systems/reactor.lua"));
 
     skybox_ = std::make_unique<Skybox>();
     if (!skybox_->load("media/skybox/1.png", "media/skybox/2.png", "media/skybox/3.png",
@@ -169,8 +166,6 @@ bool Client::run(const std::string& host, Port port)
         }
     }
 
-    MessageBus::instance().clearEndpoints();
-
     enet_peer_disconnect_now(serverPeer_, 0);
 
     ImGui_ImplOpenGL3_Shutdown();
@@ -198,17 +193,27 @@ void Client::processSdlEvents()
             break;
         case SDL_KEYDOWN:
             switch (event.key.keysym.scancode) {
+            case SDL_SCANCODE_RETURN:
+                if (auto terminalState = std::get_if<TerminalState>(&state_)) {
+                    send(Channel::Reliable,
+                        Message<MessageType::ClientExecuteCommand> {
+                            terminalState->terminalInput });
+                    terminalState->terminalInput = "";
+                }
+                break;
+            case SDL_SCANCODE_ESCAPE:
+                if (auto terminalState = std::get_if<TerminalState>(&state_)) {
+                    state_ = MoveState {};
+                    send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
+                }
+                break;
             case SDL_SCANCODE_S:
                 if (event.key.keysym.mod & KMOD_CTRL) {
-                    debugSystems = !debugSystems;
-                    controlPlayer = !debugSystems;
-                    SDL_SetRelativeMouseMode(controlPlayer ? SDL_TRUE : SDL_FALSE);
+                    const auto mode = SDL_GetRelativeMouseMode() == SDL_TRUE ? SDL_FALSE : SDL_TRUE;
+                    SDL_SetRelativeMouseMode(mode);
                 }
                 break;
 #ifndef NDEBUG
-            case SDL_SCANCODE_ESCAPE:
-                running_ = false;
-                break;
             case SDL_SCANCODE_C:
                 if (event.key.keysym.mod & KMOD_CTRL)
                     debugCollisionGeometry = !debugCollisionGeometry;
@@ -217,9 +222,9 @@ void Client::processSdlEvents()
                 if (event.key.keysym.mod & KMOD_CTRL)
                     debugRaycast = !debugRaycast;
                 break;
+#endif
             default:
                 break;
-#endif
             }
             break;
         case SDL_WINDOWEVENT:
@@ -253,6 +258,7 @@ void Client::handleInteractions()
     const auto rayOrigin = trafo.getPosition() + glm::vec3(0.0f, cameraOffsetY, 0.0f);
     const auto rayDir = trafo.getForward();
     auto hit = castRay(world_, rayOrigin, rayDir);
+    const auto interact = player_.get<comp::PlayerInputController>().interact->getPressed();
     if (hit && hit->t <= interactDistance) {
         static ecs::EntityHandle lastHit;
         if (hit->entity != lastHit) {
@@ -261,16 +267,22 @@ void Client::handleInteractions()
         }
         if (debugRaycast) {
             hitMarker_.get<comp::Transform>().setPosition(rayOrigin + rayDir * hit->t);
-        }
-        auto linked = hit->entity.getPtr<comp::VisualLink>();
-        if (linked) {
+        };
+        if (auto linked = hit->entity.getPtr<comp::VisualLink>()) {
             linked->entity.add<comp::RenderHighlight>();
-            if (player_.get<comp::PlayerInputController>().interact->getPressed()) {
+            if (interact) {
                 if (const auto ladder = hit->entity.getPtr<comp::Ladder>()) {
                     const auto delta = ladder->dir == comp::Ladder::Dir::Up ? 1.0f : -1.0f;
                     trafo.setPosition(
                         trafo.getPosition() + glm::vec3(0.0f, delta * floorHeight, 0.0f));
                 }
+            }
+        }
+        if (auto terminal = hit->entity.getPtr<comp::Terminal>()) {
+            if (interact) {
+                send(Channel::Reliable,
+                    Message<MessageType::ClientInteractTerminal> { terminal->systemName });
+                hit->entity.get<comp::VisualLink>().entity.remove<comp::RenderHighlight>();
             }
         }
     } else {
@@ -281,12 +293,36 @@ void Client::handleInteractions()
 void Client::update(float dt)
 {
     InputManager::instance().update();
-    if (controlPlayer)
+    if (const auto move = std::get_if<MoveState>(&state_)) {
+        playerLookSystem(world_, dt);
         playerControlSystem(world_, dt);
-    integrationSystem(world_, dt);
-    handleInteractions();
-    for (const auto& sys : shipSystems_)
-        sys->update();
+        integrationSystem(world_, dt);
+        handleInteractions();
+    } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
+        const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
+        const auto targetDist = 3.0f;
+        const auto targetPos = termTrafo.getPosition() + termTrafo.getUp() * targetDist;
+        const auto delta = targetPos - player_.get<comp::Transform>().getPosition();
+        const auto dist = glm::length(delta) + 1e-5f;
+        if (dist > 0.01f) {
+            const auto dir = delta / dist;
+            auto& trafo = player_.get<comp::Transform>();
+            trafo.move(dir * std::min(dist, 5.0f * dt));
+            const auto startDist = glm::length(targetPos - terminal->startPos);
+            const auto t = rescale(dist, startDist, 0.0f, 0.0f, 1.0f);
+            const auto targetOrientation
+                = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))
+                * termTrafo.getOrientation();
+            trafo.setOrientation(glm::slerp(trafo.getOrientation(), targetOrientation, t));
+        } else {
+            // playerLookSystem(world_, dt); // maybe put this in later
+        }
+
+        if (player_.get<comp::PlayerInputController>().interact->getPressed()) {
+            state_ = MoveState {};
+            send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
+        }
+    }
 }
 
 void Client::sendUpdate()
@@ -309,11 +345,14 @@ void Client::receive(const enet::Packet& packet)
         fmt::print(stderr, "Could not decode common message header\n");
         return; // Ignore message
     }
-    switch (static_cast<MessageType>(header.messageType)) {
+    const auto messageType = static_cast<MessageType>(header.messageType);
+    switch (messageType) {
         MESSAGE_CASE(ServerHello);
         MESSAGE_CASE(ServerPlayerStateUpdate);
+        MESSAGE_CASE(ServerInteractTerminal);
+        MESSAGE_CASE(ServerUpdateTerminalOutput);
     default:
-        fmt::print(stderr, "Received unrecognized message\n");
+        fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
     }
 }
 
@@ -383,6 +422,34 @@ void Client::processMessage(
     lastUpdateFrame = frameNumber;
 }
 
+ecs::EntityHandle Client::findTerminal(const std::string& system)
+{
+    ecs::EntityHandle found;
+    world_.forEachEntity<comp::Terminal>(
+        [&system, &found](ecs::EntityHandle entity, const comp::Terminal& terminal) {
+            if (terminal.systemName == system) {
+                assert(!found);
+                found = entity.get<comp::VisualLink>().entity;
+            }
+        });
+    assert(found);
+    return found;
+}
+
+void Client::processMessage(
+    uint32_t /*frameNumber*/, const Message<MessageType::ServerInteractTerminal>& message)
+{
+    state_ = TerminalState { findTerminal(message.terminal), message.terminal, "",
+        player_.get<comp::Transform>().getPosition() };
+    send(Channel::Reliable, Message<MessageType::ClientUpdateTerminalInput> { "" });
+}
+
+void Client::processMessage(
+    uint32_t /*frameNumber*/, const Message<MessageType::ServerUpdateTerminalOutput>& message)
+{
+    terminalData_[message.terminal].output.append(message.text);
+}
+
 void Client::draw()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -402,26 +469,31 @@ void Client::draw()
     ImGui_ImplSDL2_NewFrame(window_.getSdlWindow());
     ImGui::NewFrame();
 
-    if (debugSystems) {
-        static std::unordered_map<std::string, std::string> commandInputs;
-        ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
 
-        for (auto& sys : shipSystems_) {
-            ImGui::Begin(sys->getName().c_str());
-            auto& input = commandInputs[sys->getName()];
-            ImGui::BeginChild("Child",
-                ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 60));
-            ImGui::TextUnformatted(sys->getTerminalOutput().c_str());
-            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-                ImGui::SetScrollHereY(1.0f);
-            ImGui::EndChild();
-            if (ImGui::InputText("Execute", &input, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                sys->executeCommand(input);
-                input = "";
-                ImGui::SetKeyboardFocusHere(-1);
-            }
-            ImGui::End();
+    if (std::holds_alternative<TerminalState>(state_)) {
+        auto& terminalState = std::get<TerminalState>(state_);
+
+        constexpr auto margin = 200.0f;
+        const auto size = window_.getSize();
+        ImGui::SetNextWindowPos(ImVec2(margin, margin));
+        ImGui::SetNextWindowSize(ImVec2(size.x - margin * 2.0f, size.y - margin * 2.0f));
+        ImGui::Begin("Terminal", nullptr, ImGuiWindowFlags_NoDecoration);
+        ImGui::BeginChild(
+            "Child", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 35));
+        ImGui::TextUnformatted(terminalData_[terminalState.systemName].output.c_str());
+        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            ImGui::SetScrollHereY(1.0f);
+        ImGui::EndChild();
+        ImGui::PushItemWidth(-1);
+        bool focus = false;
+        if (ImGui::InputText(
+                "Execute", &terminalState.terminalInput, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            terminalState.terminalInput = "";
         }
+        ImGui::SetKeyboardFocusHere(-1);
+        ImGui::PopItemWidth();
+        ImGui::End();
     }
 
     ImGui::Render();

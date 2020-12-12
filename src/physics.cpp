@@ -21,7 +21,7 @@ std::optional<CollisionResult> intersect(const glm::vec3& cylPos, const comp::Cy
     const auto clamped = glm::clamp(cylPos, boxMin, boxMax);
     auto rel = cylPos - clamped;
     rel.y = 0.0f;
-    const auto len = glm::length(rel);
+    const auto len = glm::length(rel) + 1e-5f;
     if (len >= cyl.radius)
         return std::nullopt;
 
@@ -149,6 +149,17 @@ void integrationSystem(ecs::World& world, float dt)
         });
 }
 
+void playerLookSystem(ecs::World& world, float dt)
+{
+    world.forEachEntity<comp::Transform, comp::PlayerInputController>(
+        [dt](comp::Transform& transform, const comp::PlayerInputController& ctrl) {
+            const auto look
+                = glm::vec2(ctrl.lookX->getState(), ctrl.lookY->getState()) * lookSensitivity;
+            transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
+            transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
+        });
+}
+
 void playerControlSystem(ecs::World& world, float dt)
 {
     static constexpr auto maxSpeed = 5.0f;
@@ -160,11 +171,6 @@ void playerControlSystem(ecs::World& world, float dt)
     world.forEachEntity<comp::Transform, comp::Velocity, comp::PlayerInputController>(
         [dt](comp::Transform& transform, comp::Velocity& velocity,
             const comp::PlayerInputController& ctrl) {
-            const auto look
-                = glm::vec2(ctrl.lookX->getState(), ctrl.lookY->getState()) * lookSensitivity;
-            transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
-            transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
-
             const auto forward = ctrl.forwards->getState() - ctrl.backwards->getState();
             const auto sideways = ctrl.right->getState() - ctrl.left->getState();
             const auto move = glm::vec3(sideways, 0.0f, -forward); // forward is -z

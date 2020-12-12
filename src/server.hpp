@@ -6,6 +6,7 @@
 
 #include "ecs.hpp"
 #include "net.hpp"
+#include "shipsystem.hpp"
 
 class Server {
 public:
@@ -23,10 +24,17 @@ private:
         ecs::EntityHandle entity;
         ENetPeer* peer;
         PlayerId id;
+        std::unordered_map<ShipSystem::Name, size_t> lastKnownTerminalSize;
 
         static PlayerId getNextId();
 
         Player(ENetPeer* peer);
+    };
+
+    struct ShipSystemData {
+        std::unique_ptr<ShipSystem> system;
+        PlayerId terminalUser = InvalidPlayerId;
+        std::string terminalInput {};
     };
 
     template <MessageType MsgType>
@@ -53,6 +61,7 @@ private:
     void disconnectPlayer(PlayerId id);
     void receive(PlayerId id, const enet::Packet& packet);
     void findSpawnPosition(Player& player);
+    std::string getUsedTerminal(PlayerId id) const;
 
     template <MessageType MsgType>
     void processMessage(Player& player, uint32_t frameNumber, ReadBuffer& buffer)
@@ -68,9 +77,19 @@ private:
     void processMessage(Player& player, uint32_t frameNumber,
         const Message<MessageType::ClientMoveUpdate>& message);
 
+    void processMessage(Player& player, uint32_t frameNumber,
+        const Message<MessageType::ClientInteractTerminal>& message);
+
+    void processMessage(Player& player, uint32_t /*frameNumber*/,
+        const Message<MessageType::ClientUpdateTerminalInput>& message);
+
+    void processMessage(Player& player, uint32_t frameNumber,
+        const Message<MessageType::ClientExecuteCommand>& message);
+
     enet::Host host_;
     ecs::World world_;
     std::vector<Player> players_;
+    std::unordered_map<ShipSystem::Name, ShipSystemData> shipSystems_;
     float time_ = 0.0f;
     uint32_t frameCounter_ = 0;
     std::atomic<bool> running_ { false };

@@ -38,7 +38,14 @@ enum class MessageType : uint8_t {
     ServerHello = 0,
     ClientMoveUpdate,
     ServerPlayerStateUpdate,
+    ClientInteractTerminal,
+    ServerInteractTerminal,
+    ClientUpdateTerminalInput,
+    ClientExecuteCommand,
+    ServerUpdateTerminalOutput,
 };
+
+std::string asString(MessageType messageType);
 
 template <MessageType MsgType>
 struct Message;
@@ -90,6 +97,63 @@ struct Message<MessageType::ServerPlayerStateUpdate> {
     SERIALIZE()
     {
         FIELD_VEC(players);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ClientInteractTerminal> {
+    std::string terminal;
+
+    SERIALIZE()
+    {
+        FIELD(terminal);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ServerInteractTerminal> {
+    std::string terminal;
+
+    SERIALIZE()
+    {
+        FIELD(terminal);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ClientUpdateTerminalInput> {
+    std::string input;
+
+    SERIALIZE()
+    {
+        FIELD(input);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ClientExecuteCommand> {
+    std::string command;
+
+    SERIALIZE()
+    {
+        FIELD(command);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ServerUpdateTerminalOutput> {
+    std::string terminal;
+    std::string text;
+
+    SERIALIZE()
+    {
+        FIELD(terminal);
+        FIELD(text);
         SERIALIZE_END;
     }
 };

@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+using StringLength = uint32_t;
+static constexpr auto MaxStringLength = std::numeric_limits<StringLength>::max();
+
 #ifndef _WIN32
 float ntohf(uint32_t val)
 {
@@ -101,8 +104,8 @@ bool WriteStream::serialize(float val)
 
 bool WriteStream::serialize(std::string& str)
 {
-    assert(str.size() <= std::numeric_limits<uint8_t>::max());
-    if (!serialize(static_cast<uint8_t>(str.size())))
+    assert(str.size() <= MaxStringLength);
+    if (!serialize(static_cast<StringLength>(str.size())))
         return false;
     buffer_.write(str.data(), str.size());
     return true;
@@ -195,7 +198,7 @@ bool ReadStream::serialize(float& val)
 
 bool ReadStream::serialize(std::string& str)
 {
-    uint8_t size = 0;
+    StringLength size = 0;
     if (!serialize(size))
         return false;
     str.resize(size, 0);

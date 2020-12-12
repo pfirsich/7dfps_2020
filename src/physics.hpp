@@ -84,4 +84,5 @@ std::optional<RayCastHit> castRay(
 
 void integrationSystem(ecs::World& world, float dt);
 
+void playerLookSystem(ecs::World& world, float dt);
 void playerControlSystem(ecs::World& world, float dt);

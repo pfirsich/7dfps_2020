@@ -32,6 +32,9 @@ bool Server::run(const std::string& host, Port port)
 
     fmt::print("Done\n");
 
+    shipSystems_.emplace("reactor",
+        ShipSystemData { std::make_unique<LuaShipSystem>("reactor", "media/systems/reactor.lua") });
+
     const auto addr = enet::getAddress(host, port);
     if (!addr) {
         fmt::print(stderr, "Could not get address\n");
@@ -69,6 +72,8 @@ bool Server::run(const std::string& host, Port port)
         SDL_Delay(1);
     }
 
+    MessageBus::instance().clearEndpoints();
+
     for (auto& player : players_)
         enet_peer_disconnect_now(player.peer, 0);
 
@@ -77,7 +82,24 @@ bool Server::run(const std::string& host, Port port)
 
 void Server::tick(float /*dt*/)
 {
-    // do nothing for now
+    for (auto& [name, system] : shipSystems_) {
+        system.system->update();
+
+        const auto total = system.system->getTotalTerminalOutputSize();
+        const auto& output = system.system->getTerminalOutput();
+        for (auto& player : players_) {
+            const auto lastKnown = player.lastKnownTerminalSize[name];
+            assert(total >= lastKnown);
+            const auto deltaLength = total - lastKnown;
+            if (deltaLength > 0) {
+                const auto maxDeltaLength = std::min(deltaLength, output.size());
+                const auto delta = output.substr(output.size() - maxDeltaLength);
+                send(player, Channel::Reliable,
+                    Message<MessageType::ServerUpdateTerminalOutput> { name, delta });
+                player.lastKnownTerminalSize[name] = total;
+            }
+        }
+    }
 }
 
 void Server::broadcastUpdate()
@@ -209,10 +231,14 @@ void Server::receive(PlayerId id, const enet::Packet& packet)
         fmt::print(stderr, "Could not decode common message header\n");
         return; // Ignore message
     }
-    switch (static_cast<MessageType>(header.messageType)) {
+    const auto messageType = static_cast<MessageType>(header.messageType);
+    switch (messageType) {
         MESSAGE_CASE(ClientMoveUpdate);
+        MESSAGE_CASE(ClientInteractTerminal);
+        MESSAGE_CASE(ClientUpdateTerminalInput);
+        MESSAGE_CASE(ClientExecuteCommand);
     default:
-        fmt::print(stderr, "Received unrecognized message\n");
+        fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
     }
 }
 
@@ -226,4 +252,47 @@ void Server::processMessage(
         trafo.setOrientation(message.orientation);
         net.lastUpdatedFrame = frameNumber;
     }
+}
+
+std::string Server::getUsedTerminal(PlayerId id) const
+{
+    for (const auto& [name, system] : shipSystems_) {
+        if (system.terminalUser == id)
+            return name;
+    }
+    assert(false);
+    return "";
+}
+
+void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
+    const Message<MessageType::ClientInteractTerminal>& message)
+{
+    if (message.terminal.empty()) {
+        const auto terminal = getUsedTerminal(player.id);
+        shipSystems_.at(terminal).terminalUser = InvalidPlayerId;
+    } else {
+        const auto it = shipSystems_.find(message.terminal);
+        if (it == shipSystems_.end())
+            return; // garbage, do nothing
+
+        if (it->second.terminalUser == InvalidPlayerId) { // terminal not used
+            it->second.terminalUser = player.id;
+            send(player, Channel::Reliable,
+                Message<MessageType::ServerInteractTerminal> { message.terminal });
+        }
+    }
+}
+
+void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
+    const Message<MessageType::ClientUpdateTerminalInput>& message)
+{
+    const auto terminal = getUsedTerminal(player.id);
+    shipSystems_.at(terminal).terminalInput = message.input;
+}
+
+void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
+    const Message<MessageType::ClientExecuteCommand>& message)
+{
+    const auto system = getUsedTerminal(player.id);
+    shipSystems_.at(system).system->executeCommand(message.command);
 }
