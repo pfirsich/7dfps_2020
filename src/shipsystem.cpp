@@ -1,6 +1,9 @@
 #include "shipsystem.hpp"
 
+#include <ctime>
 #include <functional>
+
+#include <fmt/chrono.h>
 
 #include <glwx.hpp>
 
@@ -334,7 +337,10 @@ std::string ShipSystem::getLogText(const LogId& id) const
     std::string text;
     text.reserve(16 * 1024);
     for (const auto& line : logs_[*idx].lines) {
-        text.append(fmt::format("[] [{}] {}\n", getLogLevelString(line.level), line.text));
+        auto tm = *std::localtime(&line.time);
+        tm.tm_year += 1000;
+        text.append(fmt::format(
+            "[{:%Y-%m-%d %H:%M:%S}] [{}] {}\n", tm, getLogLevelString(line.level), line.text));
     }
     return text;
 }
@@ -367,6 +373,13 @@ size_t ShipSystem::getTerminalOutputStart() const
 std::optional<size_t> ShipSystem::Command::findSubCommand(const std::string& name) const
 {
     return findField(subCommands, name, [](const auto& cmd) { return cmd.name; });
+}
+
+ShipSystem::Log::Line::Line(ShipSystem::LogLevel level, std::string text)
+    : time(std::time(nullptr))
+    , level(level)
+    , text(std::move(text))
+{
 }
 
 std::optional<size_t> ShipSystem::findCommand(const std::string& name) const

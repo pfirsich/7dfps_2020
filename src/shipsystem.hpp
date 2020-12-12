@@ -155,8 +155,11 @@ private:
 
     struct Log {
         struct Line {
+            time_t time;
             LogLevel level;
             std::string text;
+
+            Line(LogLevel level, std::string text);
         };
 
         std::deque<Line> lines;
