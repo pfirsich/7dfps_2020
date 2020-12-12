@@ -17,25 +17,49 @@ static bool debugCollisionGeometry = false;
 static bool debugRaycast = false;
 }
 
+struct Config {
+    glwx::Window::Properties props;
+    size_t width = 1024;
+    size_t height = 768;
+    bool maximize = true;
+    bool vsync = false;
+
+    void loadFromLua(const char* path)
+    {
+        sol::state lua;
+        const sol::table data = lua.script_file(path);
+        if (data["width"] != nullptr)
+            width = data["width"];
+        if (data["height"] != nullptr)
+            height = data["height"];
+        if (data["maximize"] != nullptr)
+            maximize = data["maximize"];
+        if (data["vsync"] != nullptr)
+            vsync = data["vsync"];
+        if (data["msaa"] != nullptr)
+            props.msaaSamples = data["msaa"];
+        if (data["fullscreen"] != nullptr)
+            props.fullscreenDesktop = data["fullscreen"];
+    }
+};
+
 bool Client::run(const std::string& host, Port port)
 {
     assert(!started_);
     started_ = true;
 
-    glwx::Window::Properties props;
-    props.msaaSamples = 8;
-    props.stencil = true;
-    props.allowHighDpi = false;
-
-    window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
-
-#if __APPLE__
-    // Ony my mac vsync fixes perf issue
-    window_.setSwapInterval(1);
-#else
-    window_.maximize();
-#endif
-
+    Config config;
+    config.props.msaaSamples = 8;
+    config.props.stencil = true;
+    config.props.allowHighDpi = false;
+    if (fs::exists("config.lua"))
+        config.loadFromLua("config.lua");
+    else if (fs::exists("default.config.lua"))
+        config.loadFromLua("default.config.lua");
+    window_ = glwx::makeWindow("7DFPS", config.width, config.height, config.props).value();
+    if (config.maximize)
+        window_.maximize();
+    window_.setSwapInterval(config.vsync ? 1 : 0);
     resized(window_.getSize().x, window_.getSize().y);
     glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);

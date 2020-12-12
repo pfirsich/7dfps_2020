@@ -8,3 +8,4 @@ compile_commands.json
 untracked/
 *.blend1
 imgui.ini
+config.lua
