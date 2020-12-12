@@ -49,7 +49,7 @@ bool Client::run(const std::string& host, Port port)
     started_ = true;
 
     Config config;
-    config.props.msaaSamples = 8;
+    config.props.msaaSamples = 4;
     config.props.stencil = true;
     config.props.allowHighDpi = false;
     if (fs::exists("config.lua"))
