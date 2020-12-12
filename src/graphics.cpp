@@ -102,6 +102,7 @@ bool Skybox::load(const std::filesystem::path& posX, const std::filesystem::path
         return false;
     }
     texture = std::move(*skyboxTextureOpt);
+    texture.setMagFilter(glw::Texture::MagFilter::Nearest);
 
     glw::VertexFormat vfmt;
     vfmt.add(0, 3, glw::AttributeType::F32);
