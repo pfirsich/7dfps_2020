@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <glm/glm.hpp>
+
 #include "ecs.hpp"
 
 namespace comp {
@@ -19,5 +21,10 @@ struct Name {
     std::string value;
 
     static std::string get(ecs::EntityHandle entity);
+};
+
+struct Rotate {
+    glm::vec3 axis;
+    float frequency;
 };
 }

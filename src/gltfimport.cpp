@@ -198,6 +198,7 @@ struct GltfFile::ImportCache {
 
         const auto& node = gltfFile.nodes[nodeIndex];
         auto entity = world.createEntity();
+        entityMap.emplace(nodeIndex, entity);
         if (node.name) {
             entity.add<comp::Name>(comp::Name { *node.name });
         }
@@ -253,7 +254,31 @@ struct GltfFile::ImportCache {
                 auto parent = getEntity(world, gltfFile, *node.parent, server);
                 comp::Hierarchy::setParent(entity, parent);
             }
-            entityMap.emplace(nodeIndex, entity);
+
+            const auto& extras = node.extras;
+            if (!std::holds_alternative<gltf::JsonNull>(extras)) {
+                const auto& obj = *std::get<std::unique_ptr<gltf::JsonObject>>(extras);
+                auto getNum = [](const gltf::JsonValue& val) {
+                    if (const auto d = std::get_if<double>(&val)) {
+                        return static_cast<float>(*d);
+                    } else if (const auto i = std::get_if<int64_t>(&val)) {
+                        return static_cast<float>(*i);
+                    }
+                    assert(false);
+                };
+                if (obj.count("rotate_x")) {
+                    entity.add<comp::Rotate>(
+                        comp::Rotate { glm::vec3(1.0f, 0.0f, 0.0f), getNum(obj.at("rotate_x")) });
+                }
+                if (obj.count("rotate_y")) {
+                    entity.add<comp::Rotate>(
+                        comp::Rotate { glm::vec3(0.0f, 1.0f, 0.0f), getNum(obj.at("rotate_y")) });
+                }
+                if (obj.count("rotate_z")) {
+                    entity.add<comp::Rotate>(
+                        comp::Rotate { glm::vec3(0.0f, 0.0f, 1.0f), getNum(obj.at("rotate_z")) });
+                }
+            }
         }
         return entity;
     }

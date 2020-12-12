@@ -5,6 +5,9 @@
 #include <imgui_impl_sdl.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include <glm/gtc/constants.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 #include "constants.hpp"
 #include "gltfimport.hpp"
 #include "graphics.hpp"
@@ -402,6 +405,12 @@ void Client::update(float dt)
         [this](const comp::Terminal&, const comp::Transform& transform) {
             if (rand<float>() < 0.01f)
                 play3dSound("terminalIdleBeep", transform.getPosition());
+        });
+
+    world_.forEachEntity<comp::Transform, const comp::Rotate>(
+        [dt](comp::Transform& transform, const comp::Rotate& rotate) {
+            transform.rotate(
+                glm::angleAxis(2.0f * glm::pi<float>() * rotate.frequency * dt, rotate.axis));
         });
 }
 
