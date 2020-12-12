@@ -1,4 +1,8 @@
 module.exports = {
+  fra1: {
+    pingTest: "speedtest-fra1.digitalocean.com",
+    name: "Frankfurt, Germany 1",
+  },
   // sfo1: {
   //   pingTest: "speedtest-sfo1.digitalocean.com",
   //   name: "San Francisco, United States 1",
@@ -39,10 +43,6 @@ module.exports = {
   //   pingTest: "speedtest-lon1.digitalocean.com",
   //   name: "London, United Kingdom 1",
   // },
-  fra1: {
-    pingTest: "speedtest-fra1.digitalocean.com",
-    name: "Frankfurt, Germany 1",
-  },
   sgp1: {
     pingTest: "speedtest-sgp1.digitalocean.com",
     name: "Singapore 1",

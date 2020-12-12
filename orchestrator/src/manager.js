@@ -225,7 +225,7 @@ async function startGame({ region, creatorIpAddress, version }) {
 
     await onExitGame(gameInfo);
 
-    throw new Error("Creation failed: " + error.message);
+    throw new Error(`Creation failed: ${error.message}`);
   }
 
   return gameInfo;

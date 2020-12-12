@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Untitled 7dfps Game</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=PT+Mono&display=swap"
+      rel="stylesheet"
+    />
+
+    <style media="screen">
+      body {
+        font-family: "PT Mono", monospace;
+        background: #131212;
+        color: #91ff40;
+        font-size: 18px;
+        text-shadow: 0 0 4px #b6ff81;
+        text-align: center;
+      }
+
+      #screenForm,
+      #screenDone {
+        margin: 0 auto;
+        max-width: 500px;
+        padding: 64px;
+        text-align: left;
+        border: 2px #91ff40 solid;
+        box-shadow: 0 0 4px 0 #b6ff81;
+      }
+
+      button,
+      select,
+      input {
+        background: none;
+        border: 2px #91ff40 solid;
+        box-shadow: 0 0 4px 0 #b6ff81;
+        color: inherit;
+        padding: 10px;
+        cursor: pointer;
+        font-family: inherit;
+        text-shadow: inherit;
+        font-size: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <br />
+    <br />
+
+    <h1>Untitled 7dfps Game</h1>
+    <h3>Joel + Moritz</h3>
+
+    <br />
+    <br />
+
+    <div id="screenWait"><br /><br />Loading, please wait...</div>
+
+    <div id="screenForm" style="display: none">
+      <form id="form" action="/games" method="post">
+        <label>
+          Region:
+          <select name="region" id="regions"></select>
+        </label>
+
+        <br />
+        <br />
+
+        <label>
+          Version:
+          <select name="version">
+            <option value="stable">Stable</option>
+            <option value="jam">Jam</option>
+            <option value="dev">Dev</option>
+          </select>
+        </label>
+
+        <br />
+        <br />
+        <br />
+        <br />
+
+        <button type="submit">Create Game Server</button>
+      </form>
+    </div>
+
+    <div id="screenDone" style="display: none"></div>
+
+    <script src="/script.js" charset="utf-8"></script>
+  </body>
+</html>

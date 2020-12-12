@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
 
 const morgan = require("morgan");
@@ -15,28 +16,22 @@ app.use(morgan("tiny"));
 
 app.use(express.json());
 
-const port = parseInt(process.env.PORT || "3000", 10);
-
-function getClientIp(req) {
-  return (
-    (req.headers["x-forwarded-for"] || "").split(",").pop().trim() ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress ||
-    req.connection.socket.remoteAddress
-  );
-}
-
-app.get("/", (req, res) => {
-  res.json({
-    msg: "Hi!",
-  });
-});
+app.use("/", express.static(path.join(__dirname, "public")));
 
 app.get("/regions", (req, res) => {
   res.json(regions);
 });
 
 app.post("/games", async (req, res) => {
+  function getClientIp(req) {
+    return (
+      (req.headers["x-forwarded-for"] || "").split(",").pop().trim() ||
+      req.connection.remoteAddress ||
+      req.socket.remoteAddress ||
+      req.connection.socket.remoteAddress
+    );
+  }
+
   const { region } = req.body;
   const version = req.body.version || "stable";
 
@@ -132,6 +127,7 @@ async function init() {
     }
   }, 5 * 60 * 1000);
 
+  const port = parseInt(process.env.PORT || "3000", 10);
   // Start server
   app.listen(port, () => {
     console.log(`Listening at http://localhost:${port}`);
