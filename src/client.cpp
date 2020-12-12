@@ -28,8 +28,14 @@ bool Client::run(const std::string& host, Port port)
     props.allowHighDpi = false;
 
     window_ = glwx::makeWindow("7DFPS", 1024, 768, props).value();
+
+#if __APPLE__
+    // Ony my mac vsync fixes perf issue
+    window_.setSwapInterval(1);
+#else
     window_.maximize();
-    window_.setSwapInterval(0);
+#endif
+
     resized(window_.getSize().x, window_.getSize().y);
     glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);
