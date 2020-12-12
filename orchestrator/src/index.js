@@ -72,7 +72,7 @@ app.post("/games", async (req, res) => {
       timeStarted: gameInfo.timeStarted,
     });
   } catch (error) {
-    console.error("Error while creating game", error);
+    console.error("Error in create game request", error);
 
     if (error.full) {
       res.status(503).json({

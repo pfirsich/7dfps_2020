@@ -115,12 +115,21 @@ async function shutDownVm(vm) {
     `Shuting down vm:${vm.vmId} Droplet: ${vm.dropletId} IP: ${vm.ipv4Address}`
   );
 
-  vm = await db.setVm({
-    ...vm,
-    state: "SHUTTING_DOWN",
-  });
+  if (vm.dropletId) {
+    vm = await db.setVm({
+      ...vm,
+      state: "SHUTTING_DOWN",
+    });
 
-  await doClient.droplets.deleteById(vm.dropletId);
+    try {
+      await doClient.droplets.deleteById(vm.dropletId);
+    } catch (error) {
+      // Ignore 404, assume droplet already removed
+      if (!error.message.includes("404")) {
+        throw error;
+      }
+    }
+  }
 
   vm = await db.setVm({
     ...vm,
@@ -212,9 +221,11 @@ async function startGame({ region, creatorIpAddress, version }) {
       state: "RUNNING",
     });
   } catch (error) {
+    console.error("Error while creating game", error);
+
     await onExitGame(gameInfo);
 
-    throw error;
+    throw new Error("Creation failed: " + error.message);
   }
 
   return gameInfo;
