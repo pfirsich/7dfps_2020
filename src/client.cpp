@@ -79,8 +79,8 @@ bool Client::run(const std::string& host, Port port)
 #endif
 
     skybox_ = std::make_unique<Skybox>();
-    if (!skybox_->load("media/skybox/1.png", "media/skybox/2.png", "media/skybox/3.png",
-            "media/skybox/4.png", "media/skybox/5.png", "media/skybox/6.png")) {
+    if (!skybox_->load("media/skybox/1.png", "media/skybox/3.png", "media/skybox/5.png",
+            "media/skybox/6.png", "media/skybox/2.png", "media/skybox/4.png")) {
         fmt::print("Could not load 'media/skybox'\n");
         return false;
     };
