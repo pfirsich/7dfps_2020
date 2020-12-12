@@ -40,6 +40,7 @@ set(SRC
   serialization.cpp
   server.cpp
   shipsystem.cpp
+  sound.cpp
   util.cpp
 )
 list(TRANSFORM SRC PREPEND src/)
@@ -70,6 +71,8 @@ target_link_libraries(luajit INTERFACE ${LUAJIT_LIBRARY_DIR})
 message(STATUS "LuaJIT Include Dir: ${LUAJIT_INCLUDE_DIR}")
 message(STATUS "LuaJIT Library Dir: ${LUAJIT_LIBRARY_DIR}")
 
+add_subdirectory(deps/soloud)
+
 add_executable(7dfps ${SRC})
 target_include_directories(7dfps PUBLIC include)
 target_include_directories(7dfps PRIVATE deps/glwrap/include)
@@ -78,11 +81,13 @@ target_include_directories(7dfps PRIVATE ${ENET_INCLUDE_DIRS})
 target_include_directories(7dfps PRIVATE ${DOCOPT_INCLUDE_DIRS})
 target_include_directories(7dfps SYSTEM PRIVATE deps/sol2/single/include)
 target_include_directories(7dfps SYSTEM PRIVATE deps/imgui deps/imgui/backends)
+target_include_directories(7dfps SYSTEM PRIVATE deps/imgui deps/soloud/include)
 target_link_libraries(7dfps PRIVATE glwx gltf)
 target_link_libraries(7dfps PRIVATE fmt::fmt)
 target_link_libraries(7dfps PRIVATE ${ENET_LIBRARIES})
 target_link_libraries(7dfps PRIVATE Threads::Threads)
 target_link_libraries(7dfps PRIVATE docopt)
 target_link_libraries(7dfps PRIVATE luajit)
+target_link_libraries(7dfps PRIVATE soloud)
 
 set_wall(7dfps)

@@ -10,6 +10,7 @@
 #include "graphics.hpp"
 #include "physics.hpp"
 #include "shipsystem.hpp"
+#include "sound.hpp"
 #include "util.hpp"
 
 namespace {
@@ -70,6 +71,10 @@ bool Client::run(const std::string& host, Port port)
     ImGui::StyleColorsDark();
     ImGui_ImplSDL2_InitForOpenGL(window_.getSdlWindow(), window_.getSdlGlContext());
     ImGui_ImplOpenGL3_Init("#version 150");
+
+    if (!initSound()) {
+        return false;
+    }
 
     InputManager::instance().update(); // Initialize data for first frame
 
@@ -202,6 +207,8 @@ bool Client::run(const std::string& host, Port port)
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 
+    deinitSound();
+
     return true;
 }
 
@@ -328,6 +335,14 @@ void Client::handleInteractions()
     }
 }
 
+void Client::playSound(const std::string& name, const std::string entityName)
+{
+    auto entity = findEntity(world_, entityName);
+    if (entity) {
+        play3dSound(name, entity.get<comp::Transform>().getPosition());
+    }
+}
+
 void Client::update(float dt)
 {
     InputManager::instance().update();
@@ -336,6 +351,8 @@ void Client::update(float dt)
         playerControlSystem(world_, dt);
         integrationSystem(world_, dt);
         handleInteractions();
+
+        updateListener(player_.get<comp::Transform>(), player_.get<comp::Velocity>().value);
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
         const auto targetDist = 3.0f;
@@ -360,7 +377,15 @@ void Client::update(float dt)
             state_ = MoveState {};
             send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
         }
+
+        updateListener(player_.get<comp::Transform>(), glm::vec3(0.0f));
     }
+
+    world_.forEachEntity<const comp::Terminal, const comp::Transform>(
+        [this](const comp::Terminal&, const comp::Transform& transform) {
+            if (rand<float>() < 0.01f)
+                play3dSound("terminalIdleBeep", transform.getPosition());
+        });
 }
 
 void Client::sendUpdate()

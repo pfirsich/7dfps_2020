@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "components.hpp"
+
 float lerp(float a, float b, float t);
 float unlerp(float val, float a, float b);
 float rescale(float val, float fromA, float fromB, float toA, float toB);
@@ -35,3 +37,5 @@ std::string hexStream(const uint8_t* data, size_t len);
 std::string toLower(const std::string& str);
 
 std::vector<std::string> split(const std::string& str);
+
+ecs::EntityHandle findEntity(ecs::World& world, const std::string& name);

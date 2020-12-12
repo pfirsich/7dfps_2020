@@ -11,7 +11,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Update Submodules
       run: |
-        git submodule update --init deps/glwrap deps/gltf deps/sol2 deps/imgui
+        git submodule update --init deps/glwrap deps/gltf deps/sol2 deps/imgui deps/soloud/repo
         cd deps/glwrap && git submodule update --init deps/stb && cd ../..
         cd deps/gltf && git submodule update --init simdjson
     - name: Update Apt
@@ -33,7 +33,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Update Submodules
       run: |
-        git submodule update --init .\deps\glwrap .\deps\gltf .\deps\sol2 .\deps\imgui
+        git submodule update --init .\deps\glwrap .\deps\gltf .\deps\sol2 .\deps\imgui .\deps\soloud\repo
         cd .\deps\gltf
         git submodule update --init .\simdjson
     - name: Install Dependencies

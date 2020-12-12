@@ -74,6 +74,8 @@ private:
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerUpdateTerminalOutput>& message);
 
+    void playSound(const std::string& name, const std::string entityName);
+
     ENetPeer* serverPeer_ = nullptr;
     enet::Host host_;
     glwx::Window window_;
