@@ -26,7 +26,7 @@ set (SOURCE_PATH ${SOLOUD_REPO_PATH}/src)
 set (TARGET_HEADERS
 	${HEADER_PATH}/soloud.h
 	${HEADER_PATH}/soloud_audiosource.h
-	${HEADER_PATH}/soloud_ay.h
+	# ${HEADER_PATH}/soloud_ay.h
 	${HEADER_PATH}/soloud_bassboostfilter.h
 	${HEADER_PATH}/soloud_biquadresonantfilter.h
 	${HEADER_PATH}/soloud_bus.h
@@ -92,16 +92,16 @@ set (CORE_SOURCES
 set (AUDIOSOURCES_PATH ${SOURCE_PATH}/audiosource)
 set (AUDIOSOURCES_SOURCES
 	# ay
-	${AUDIOSOURCES_PATH}/ay/chipplayer.cpp
-	${AUDIOSOURCES_PATH}/ay/chipplayer.h
-	${AUDIOSOURCES_PATH}/ay/readme.txt
-	${AUDIOSOURCES_PATH}/ay/sndbuffer.cpp
-	${AUDIOSOURCES_PATH}/ay/sndbuffer.h
-	${AUDIOSOURCES_PATH}/ay/sndchip.cpp
-	${AUDIOSOURCES_PATH}/ay/sndchip.h
-	${AUDIOSOURCES_PATH}/ay/sndrender.cpp
-	${AUDIOSOURCES_PATH}/ay/sndrender.h
-	${AUDIOSOURCES_PATH}/ay/soloud_ay.cpp
+	# ${AUDIOSOURCES_PATH}/ay/chipplayer.cpp
+	# ${AUDIOSOURCES_PATH}/ay/chipplayer.h
+	# ${AUDIOSOURCES_PATH}/ay/readme.txt
+	# ${AUDIOSOURCES_PATH}/ay/sndbuffer.cpp
+	# ${AUDIOSOURCES_PATH}/ay/sndbuffer.h
+	# ${AUDIOSOURCES_PATH}/ay/sndchip.cpp
+	# ${AUDIOSOURCES_PATH}/ay/sndchip.h
+	# ${AUDIOSOURCES_PATH}/ay/sndrender.cpp
+	# ${AUDIOSOURCES_PATH}/ay/sndrender.h
+	# ${AUDIOSOURCES_PATH}/ay/soloud_ay.cpp
 
 	# monotone
 	${AUDIOSOURCES_PATH}/monotone/soloud_monotone.cpp
