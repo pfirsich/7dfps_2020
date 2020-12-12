@@ -1,5 +1,7 @@
 #include "physics.hpp"
 
+#include <glm/gtc/quaternion.hpp>
+
 #include "components.hpp"
 #include "constants.hpp"
 
@@ -152,11 +154,15 @@ void integrationSystem(ecs::World& world, float dt)
 void playerLookSystem(ecs::World& world, float dt)
 {
     world.forEachEntity<comp::Transform, comp::PlayerInputController>(
-        [dt](comp::Transform& transform, const comp::PlayerInputController& ctrl) {
+        [dt](comp::Transform& transform, comp::PlayerInputController& ctrl) {
             const auto look
                 = glm::vec2(ctrl.lookX->getState(), ctrl.lookY->getState()) * lookSensitivity;
-            transform.rotate(glm::angleAxis(-look.x, glm::vec3(0.0f, 1.0f, 0.0f)));
-            transform.rotateLocal(glm::angleAxis(-look.y, glm::vec3(1.0f, 0.0f, 0.0f)));
+            ctrl.yaw += -look.x;
+            ctrl.pitch -= look.y;
+            ctrl.pitch = std::clamp(ctrl.pitch, -glm::half_pi<float>(), glm::half_pi<float>());
+            const auto pitchQuat = glm::angleAxis(ctrl.pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+            const auto yawQuat = glm::angleAxis(ctrl.yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+            transform.setOrientation(yawQuat * pitchQuat);
         });
 }
 

@@ -51,6 +51,11 @@ struct PlayerInputController {
     {
     }
 
+    // What are these doing here? This turd needs to be done soon, so now I shit code into whatever
+    // place I feel like.
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+
     std::unique_ptr<BinaryInput> forwards;
     std::unique_ptr<BinaryInput> backwards;
     std::unique_ptr<BinaryInput> left;
