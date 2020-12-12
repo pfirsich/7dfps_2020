@@ -8,10 +8,47 @@ function onError(e) {
   document.getElementById("screenDone").style.display = "none";
 }
 
+function fallbackCopyTextToClipboard(text) {
+  var textArea = document.createElement("textarea");
+  textArea.value = text;
+
+  // Avoid scrolling to bottom
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.position = "fixed";
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    var successful = document.execCommand("copy");
+    var msg = successful ? "successful" : "unsuccessful";
+    console.log("Fallback: Copying text command was " + msg);
+  } catch (err) {
+    console.error("Fallback: Oops, unable to copy", err);
+  }
+
+  document.body.removeChild(textArea);
+}
+
+function copyTextToClipboard(text) {
+  if (!navigator.clipboard) {
+    fallbackCopyTextToClipboard(text);
+    return;
+  }
+  navigator.clipboard.writeText(text).then(
+    function () {
+      console.log("Async: Copying to clipboard was successful!");
+    },
+    function (err) {
+      console.error("Async: Could not copy text: ", err);
+    }
+  );
+}
+
 async function submit(event) {
   event.preventDefault();
-
-  console.log("Hi");
 
   const timeStarted = Date.now();
   const update = () => {
@@ -63,17 +100,24 @@ async function submit(event) {
   }
 
   document.getElementById("screenDone").innerHTML = `
-    <h3>Game Code: ${json.gameCode}</h3>
 
-    Host: ${json.host} <br>
-    Port: ${json.port} <br>
+    <h2>Host: </h2>
+    <input type="text" id="inputHost" readonly value="${json.host}:${json.port}">  <button type="button" id="copy">Copy</button>
 
     <br><br>
     ===========
     <br><br>
-    Version: ${json.version} <br>
-    Time Started: ${json.timeStarted} <br>
+    Game Code: ${json.gameCode}<br>
+    Version: ${json.version}<br>
+    Time Started: ${json.timeStarted}<br>
   `;
+
+  document.getElementById("copy").addEventListener("click", () => {
+    copyTextToClipboard(`${json.host}:${json.port}`);
+  });
+  document.getElementById("inputHost").addEventListener("click", () => {
+    copyTextToClipboard(`${json.host}:${json.port}`);
+  });
 
   document.getElementById("screenWait").style.display = "none";
   document.getElementById("screenForm").style.display = "none";
