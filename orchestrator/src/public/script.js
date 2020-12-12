@@ -69,7 +69,7 @@ async function submit(event) {
         Starting server: ${(progress * 100).toFixed(2)}%<br>
         <br>
         <br>
-        (this my take up to 60 seconds)
+        (this may take up to 60 seconds)
       `;
   };
 
@@ -101,22 +101,18 @@ async function submit(event) {
 
   document.getElementById("screenDone").innerHTML = `
 
-    <h2>Host: </h2>
-    <input type="text" id="inputHost" readonly value="${json.host}:${json.port}">  <button type="button" id="copy">Copy</button>
+    <h2>Game Code: </h2>
+    <input type="text" id="inputHost" readonly value="${json.host}:${json.port}:${json.gameCode}">  <button type="button" id="copy">Copy</button>
 
     <br><br>
-    ===========
-    <br><br>
-    Game Code: ${json.gameCode}<br>
-    Version: ${json.version}<br>
-    Time Started: ${json.timeStarted}<br>
+    Share this code to play together.
   `;
 
   document.getElementById("copy").addEventListener("click", () => {
-    copyTextToClipboard(`${json.host}:${json.port}`);
+    copyTextToClipboard(`${json.host}:${json.port}:${json.gameCode}`);
   });
   document.getElementById("inputHost").addEventListener("click", () => {
-    copyTextToClipboard(`${json.host}:${json.port}`);
+    copyTextToClipboard(`${json.host}:${json.port}:${json.gameCode}`);
   });
 
   document.getElementById("screenWait").style.display = "none";
