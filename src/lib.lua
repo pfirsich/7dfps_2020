@@ -24,6 +24,10 @@ function rescale(val, fromA, fromB, toA, toB)
     return lerp(toA, toB, unlerp(val, fromA, fromB))
 end
 
+function approachExp (value, target, speed)
+    return value + (target - value) * speed
+end
+
 logLevel = {
     DEBUG = 0,
     INFO = 1,
