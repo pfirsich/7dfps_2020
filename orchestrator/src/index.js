@@ -9,7 +9,7 @@ const regions = require("./regions");
 
 const app = express();
 
-const VALID_VERSIONS = ["jam", "stable", "dev"];
+const VALID_VERSIONS = ["jam", "latest"];
 
 // http logging
 app.use(morgan("tiny"));

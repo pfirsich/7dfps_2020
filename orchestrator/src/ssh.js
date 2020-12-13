@@ -10,25 +10,40 @@ async function sleep(time) {
   });
 }
 
-function gameCommand(port, gameCode) {
+function gameCommand(port, gameCode, version) {
   // const cmd = `nc -u -l ${port}`;
   // const cmd = `docker run -p ${port}:${port}/udp -t ${image} build/7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
 
-  const cmd = `cd /home/morel/7dfps && ./7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
-  return `mkdir -p /var/log/7dfps/games && ${cmd} | tee /var/log/7dfps/games/${gameCode}.log`;
+  return `
+  set -e
+  mkdir -p /var/log/7dfps/games
+  log=/var/log/7dfps/games/${gameCode}.log
+  touch $log
+
+  cd /home/morel/7dfps
+  if test -d "${version}"; then
+    cd "${version}"
+  fi
+
+  echo "Starting game ${gameCode} with version ${version}" >> $log
+  echo "PWD:" >> $log
+  pwd >> $log
+
+  ./7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode} | tee -a $log
+  `;
 }
 
 function spawnGameProcess(ssh, gameInfo, onExitGame) {
   const { port, gameCode, vmId } = gameInfo;
 
   ssh
-    .execCommand(gameCommand(port, gameCode), {
+    .execCommand(gameCommand(port, gameCode, gameInfo.version), {
       cwd: "/",
       onStdout(chunk) {
         const str = chunk.toString("utf8");
         str.split("\n").forEach((line) => {
           if (line) {
-            console.log(`stdout [vm:${vmId} ${gameCode}]`, line);
+            console.log(`[vm:${vmId} ${gameCode}]`, line);
           }
         });
       },
@@ -36,7 +51,7 @@ function spawnGameProcess(ssh, gameInfo, onExitGame) {
         const str = chunk.toString("utf8");
         str.split("\n").forEach((line) => {
           if (line) {
-            console.error(`stderr [vm:${vmId} ${gameCode}]`, line);
+            console.error(`[vm:${vmId} ${gameCode}]`, line);
           }
         });
       },

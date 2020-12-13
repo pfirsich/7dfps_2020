@@ -17,17 +17,6 @@ async function sleep(time) {
   });
 }
 
-// function initScript(vm) {
-//   return `
-//   mkdir -p /var/log/7dfps/;
-//   mkdir -p /usr/share/7dfps/;
-//
-//   echo ${vm.vmId} > /usr/share/7dfps/vmId;
-//
-//   yum install -y nc docker | tee /var/log/7dfps/install.log;
-//   `;
-// }
-
 async function waitForAction(actionId) {
   const waitTimeSec = 5;
   const maxTries = 20;
@@ -65,7 +54,7 @@ async function startVm({ region }) {
     timeStarted: "NOW()",
   });
 
-  const name = `7dfps-game-vm-${vm.vmId}`;
+  const name = `${config.gameNameSlug}${vm.vmId}`;
   console.log(`Starting droplet: ${name}`);
 
   const result = await doClient.droplets.create({
@@ -76,6 +65,7 @@ async function startVm({ region }) {
     ssh_keys: config.vmSshKeys,
     backups: false,
     ipv6: true,
+    // user_data doesn't work for some reason
     // user_data: initScript(vm),
     monitoring: true,
     volumes: null,
@@ -184,8 +174,10 @@ async function onExitGame(gameInfo) {
 }
 
 async function startGame({ region, creatorIpAddress, version }) {
+  const gameCodeMaxChars = config.gameCodeSize.toString(16).length;
   const gameCode = Math.round(Math.random() * config.gameCodeSize)
     .toString(16)
+    .padStart(gameCodeMaxChars, "0")
     .toUpperCase();
 
   let gameInfo = await db.setGame({
