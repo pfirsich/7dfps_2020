@@ -543,7 +543,7 @@ void Client::update(float dt)
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
         const auto targetDist = 3.0f;
-        const auto targetPos = termTrafo.getPosition() + termTrafo.getUp() * targetDist;
+        const auto targetPos = termTrafo.getPosition() - termTrafo.getForward() * targetDist;
         const auto delta = targetPos - player_.get<comp::Transform>().getPosition();
         const auto dist = glm::length(delta) + 1e-5f;
         if (dist > 0.01f) {
@@ -552,9 +552,7 @@ void Client::update(float dt)
             trafo.move(dir * std::min(dist, 5.0f * dt));
             const auto startDist = glm::length(targetPos - terminal->startPos);
             const auto t = rescale(dist, startDist, 0.0f, 0.0f, 1.0f);
-            const auto targetOrientation
-                = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))
-                * termTrafo.getOrientation();
+            const auto targetOrientation = -termTrafo.getOrientation();
             trafo.setOrientation(glm::slerp(trafo.getOrientation(), targetOrientation, t));
         } else {
             // playerLookSystem(world_, dt); // maybe put this in later

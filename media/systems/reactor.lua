@@ -5,8 +5,8 @@ terminalOutput([[
 / /  | |_| \__ \ | (_) | | | |   / /\/\ \    \ V / ___) |   | || |_| | | | | | |
 \/    \__,_|___/_|\___/|_| |_|   \/    \/     \_/ |____/    | | \__|_| |_| |_| |
                                                              \_\            /_/
-]])
 
+]])
 
 -- constants
 local alarmLevel = 0.2
@@ -15,7 +15,7 @@ local alarmLevel = 0.2
 -- fuel
 local battery = 0.1
 
-local coreCount = 4 * 3
+local coreCount = 2 * 2
 local cores = {}
 
 for i = 1, coreCount do
@@ -51,10 +51,10 @@ end)
 tick(5.0, function()
     if battery < alarmLevel then
         setAlarm()
-        log("", logLevel.WARNING, ("Battery level critical (%d%%)"):format(math.floor(battery * 100)))
+        log("", logLevel.WARNING, ("Battery level critical (%d%%)"):format(battery * 100))
     else
         if hasAlarm() then
-            log("", logLevel.INFO, ("Battery level normal (%d%%)"):format(math.floor(battery * 100)))
+            log("", logLevel.INFO, ("Battery level normal (%d%%)"):format(battery * 100))
         end
         clearAlarm()
     end
