@@ -131,8 +131,11 @@ bool Client::run(const std::string& host, Port port)
 
     world_.flush();
 
-    // We load everything else before attempting to connect, because we don't want a connection to
-    // time out or something.
+    soloud.setLooping(playEntitySound("engineIdle", "engine"), true);
+    soloud.setLooping(playEntitySound("engineIdle", "engine", 1.0f, 2.0f), true);
+
+    // We load everything else before attempting to connect, because we don't want a connection
+    // to time out or something.
 
     host_ = enet::Host(static_cast<uint8_t>(Channel::Count), 0, 0);
     if (!host_) {
@@ -229,6 +232,14 @@ void Client::resized(size_t width, size_t height)
     frustum_.setPerspective(glm::radians(45.0f), aspect, 0.1f, 200.0f);
 }
 
+void Client::stopTerminalInteraction()
+{
+    const auto& terminalState = std::get<TerminalState>(state_);
+    playEntitySound("terminalInteractEnd", terminalState.terminalEntity);
+    state_ = MoveState {};
+    send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
+}
+
 void Client::processSdlEvents()
 {
     static SDL_Event event;
@@ -238,6 +249,10 @@ void Client::processSdlEvents()
         case SDL_QUIT:
             running_ = false;
             break;
+        case SDL_TEXTINPUT:
+            if (std::holds_alternative<TerminalState>(state_)) {
+                playEntitySound("terminalType", std::get<TerminalState>(state_).terminalEntity);
+            }
         case SDL_KEYDOWN:
             switch (event.key.keysym.scancode) {
             case SDL_SCANCODE_RETURN:
@@ -246,12 +261,12 @@ void Client::processSdlEvents()
                         Message<MessageType::ClientExecuteCommand> {
                             terminalState->terminalInput });
                     terminalState->terminalInput = "";
+                    playEntitySound("terminalExecute", terminalState->terminalEntity);
                 }
                 break;
             case SDL_SCANCODE_ESCAPE:
-                if (auto terminalState = std::get_if<TerminalState>(&state_)) {
-                    state_ = MoveState {};
-                    send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
+                if (std::holds_alternative<TerminalState>(state_)) {
+                    stopTerminalInteraction();
                 }
                 break;
             case SDL_SCANCODE_S:
@@ -335,6 +350,8 @@ void Client::handleInteractions()
                     const auto delta = ladder->dir == comp::Ladder::Dir::Up ? 1.0f : -1.0f;
                     trafo.setPosition(
                         trafo.getPosition() + glm::vec3(0.0f, delta * floorHeight, 0.0f));
+
+                    playSound("ladderInteract");
                 }
             }
         }
@@ -343,6 +360,7 @@ void Client::handleInteractions()
                 send(Channel::Reliable,
                     Message<MessageType::ClientInteractTerminal> { terminal->systemName });
                 hit->entity.get<comp::VisualLink>().entity.remove<comp::RenderHighlight>();
+                playEntitySound("terminalInteract", hit->entity);
             }
         }
     } else {
@@ -350,12 +368,20 @@ void Client::handleInteractions()
     }
 }
 
-void Client::playSound(const std::string& name, const std::string entityName)
+SoLoud::handle Client::playEntitySound(
+    const std::string& name, ecs::EntityHandle entity, float volume, float playbackSpeed)
+{
+    return play3dSound(name, entity.get<comp::Transform>().getPosition(), volume, playbackSpeed);
+}
+
+SoLoud::handle Client::playEntitySound(
+    const std::string& name, const std::string entityName, float volume, float playbackSpeed)
 {
     auto entity = findEntity(world_, entityName);
     if (entity) {
-        play3dSound(name, entity.get<comp::Transform>().getPosition());
+        return playEntitySound(name, entity, volume, playbackSpeed);
     }
+    return 0;
 }
 
 void Client::update(float dt)
@@ -367,7 +393,7 @@ void Client::update(float dt)
         integrationSystem(world_, dt);
         handleInteractions();
 
-        updateListener(player_.get<comp::Transform>(), player_.get<comp::Velocity>().value);
+        updateListener(player_.get<comp::Transform>(), -player_.get<comp::Velocity>().value);
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
         const auto targetDist = 3.0f;
@@ -389,8 +415,7 @@ void Client::update(float dt)
         }
 
         if (player_.get<comp::PlayerInputController>().interact->getPressed()) {
-            state_ = MoveState {};
-            send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
+            stopTerminalInteraction();
         }
 
         updateListener(player_.get<comp::Transform>(), glm::vec3(0.0f));
@@ -400,6 +425,12 @@ void Client::update(float dt)
         [this](const comp::Terminal&, const comp::Transform& transform) {
             if (rand<float>() < 0.01f)
                 play3dSound("terminalIdleBeep", transform.getPosition());
+        });
+
+    world_.forEachEntity<const comp::Transform, const comp::Mesh, const comp::Name>(
+        [this](const comp::Transform& transform, const comp::Mesh&, const comp::Name& name) {
+            if (name.value.find("reactorcell") == 0 && rand<float>() < 0.01f)
+                play3dSound("reactorZap", transform.getPosition());
         });
 
     world_.forEachEntity<comp::Transform, const comp::Rotate>(
@@ -531,6 +562,10 @@ void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerUpdateTerminalOutput>& message)
 {
     terminalData_[message.terminal].output.append(message.text);
+    if (const auto terminalState = std::get_if<TerminalState>(&state_)) {
+        if (terminalState->systemName == message.terminal)
+            playEntitySound("terminalOutput", terminalState->terminalEntity);
+    }
 }
 
 void Client::draw()

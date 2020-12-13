@@ -9,6 +9,7 @@
 #include "graphics.hpp"
 #include "net.hpp"
 #include "shipsystem.hpp"
+#include "sound.hpp"
 
 class Client {
 public:
@@ -64,6 +65,8 @@ private:
         processMessage(frameNumber, message);
     }
 
+    void stopTerminalInteraction();
+
     ecs::EntityHandle findTerminal(const std::string& system);
 
     void processMessage(uint32_t frameNumber, const Message<MessageType::ServerHello>& message);
@@ -74,7 +77,10 @@ private:
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerUpdateTerminalOutput>& message);
 
-    void playSound(const std::string& name, const std::string entityName);
+    SoLoud::handle playEntitySound(const std::string& name, const std::string entityName,
+        float volume = 1.0f, float playbackSpeed = 1.0f);
+    SoLoud::handle playEntitySound(const std::string& name, ecs::EntityHandle entity,
+        float volume = 1.0f, float playbackSpeed = 1.0f);
 
     ENetPeer* serverPeer_ = nullptr;
     enet::Host host_;

@@ -4,14 +4,15 @@
 #include <string>
 #include <unordered_map>
 
-#include <soloud.h>
 #include <soloud_wav.h>
 
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
 namespace {
-SoLoud::Soloud soloud;
+static constexpr auto defaultMinDistance = 1.0f;
+static constexpr auto defaultMaxDistance = 60.0f;
+static constexpr auto defaultHalfDistance = 30.0f;
 
 struct SoundData {
     std::string name;
@@ -29,7 +30,42 @@ SoundData& getSound(const std::string& name)
     }
     return it->second;
 }
+
+constexpr float getRolloff(float minDistance, float halfDistance)
+{
+    return minDistance / (halfDistance - minDistance);
 }
+
+struct SoundProperties {
+    std::string filename;
+    float volume = 1.0f;
+    float minDistance = defaultMinDistance;
+    float maxDistance = defaultMaxDistance;
+    float halfDistance = defaultHalfDistance;
+
+    static SoundProperties getFromLuaObject(sol::object obj)
+    {
+        if (obj.is<std::string>()) {
+            return SoundProperties { obj.as<std::string>() };
+        } else if (obj.is<sol::table>()) {
+            const auto table = obj.as<sol::table>();
+            auto props = SoundProperties { table["file"].get<std::string>() };
+            if (table["volume"] != sol::nil)
+                props.volume = table["volume"].get<float>();
+            if (table["halfDistance"] != sol::nil)
+                props.halfDistance = table["halfDistance"].get<float>();
+            if (table["minDistance"] != sol::nil)
+                props.minDistance = table["minDistance"].get<float>();
+            if (table["maxDistance"] != sol::nil)
+                props.maxDistance = table["maxDistance"].get<float>();
+            return props;
+        }
+        std::abort();
+    }
+};
+}
+
+SoLoud::Soloud soloud;
 
 bool initSound()
 {
@@ -42,14 +78,20 @@ bool initSound()
     sol::state lua;
     const sol::table soundmap = lua.script_file("media/sounds/soundmap.lua");
     for (auto [name, value] : soundmap) {
-        const auto path = "media/sounds/" + value.as<std::string>();
+        const auto props = SoundProperties::getFromLuaObject(value);
+        const auto path = "media/sounds/" + props.filename;
         auto source = std::make_unique<SoLoud::Wav>();
         if (source->load(path.c_str()) != 0) {
             fmt::print(stderr, "Could not load sound '{}'\n", path);
             return false;
         }
-        const auto [it, inserted] = sounds.emplace(
-            name.as<std::string>(), SoundData { name.as<std::string>(), std::move(source), 1.0f });
+        const auto rolloff = getRolloff(props.minDistance, props.halfDistance);
+        source->set3dMinMaxDistance(props.minDistance, props.maxDistance);
+        source->set3dAttenuation(SoLoud::AudioSource::INVERSE_DISTANCE, rolloff);
+
+        const auto nameStr = name.as<std::string>();
+        const auto [it, inserted]
+            = sounds.emplace(nameStr, SoundData { nameStr, std::move(source), props.volume });
         assert(inserted);
     }
     return true;
@@ -60,15 +102,16 @@ void deinitSound()
     soloud.deinit();
 }
 
-void playSound(const std::string& name, float volume, float playbackSpeed)
+SoLoud::handle playSound(const std::string& name, float volume, float playbackSpeed)
 {
     const auto& sound = getSound(name);
     auto handle = soloud.play(*sound.source, sound.volume * volume, 0.0f, true);
     soloud.setRelativePlaySpeed(handle, playbackSpeed);
     soloud.setPause(handle, false);
+    return handle;
 }
 
-void play3dSound(
+SoLoud::handle play3dSound(
     const std::string& name, const glm::vec3& position, float volume, float playbackSpeed)
 {
     const auto& sound = getSound(name);
@@ -76,6 +119,7 @@ void play3dSound(
         sound.volume * volume, true);
     soloud.setRelativePlaySpeed(handle, playbackSpeed);
     soloud.setPause(handle, false);
+    return handle;
 }
 
 void updateListener(const comp::Transform& listenerTransform, const glm::vec3& listenerVelocity)
