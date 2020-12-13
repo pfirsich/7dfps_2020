@@ -393,6 +393,7 @@ void Client::update(float dt)
         integrationSystem(world_, dt);
         handleInteractions();
 
+        // Negative velocity, because otherwise the doppler effect will be the wrong way around :)
         updateListener(player_.get<comp::Transform>(), -player_.get<comp::Velocity>().value);
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
