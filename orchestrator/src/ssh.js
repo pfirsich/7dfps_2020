@@ -11,16 +11,13 @@ async function sleep(time) {
 }
 
 function gameCommand(port, gameCode, version) {
-  // const cmd = `nc -u -l ${port}`;
-  // const cmd = `docker run -p ${port}:${port}/udp -t ${image} build/7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode}`;
-
   return `
   set -e
-  mkdir -p /var/log/7dfps/games
-  log=/var/log/7dfps/games/${gameCode}.log
+  mkdir -p /var/log/arbitrary-complexity/games
+  log=/var/log/arbitrary-complexity/games/${gameCode}.log
   touch $log
 
-  cd /home/morel/7dfps
+  cd /home/morel/arbitrary-complexity
   if test -d "${version}"; then
     cd "${version}"
   fi
@@ -29,7 +26,7 @@ function gameCommand(port, gameCode, version) {
   echo "PWD:" >> $log
   pwd >> $log
 
-  ./7dfps server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode} | tee -a $log
+  ./complexity server 0.0.0.0 ${port} --exit-after-game --exit-timeout=60 --gamecode=${gameCode} | tee -a $log
   `;
 }
 
