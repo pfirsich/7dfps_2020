@@ -229,7 +229,7 @@ void Client::resized(size_t width, size_t height)
 {
     glw::State::instance().setViewport(width, height);
     const auto aspect = static_cast<float>(width) / height;
-    frustum_.setPerspective(glm::radians(45.0f), aspect, 0.1f, 200.0f);
+    frustum_.setPerspective(glm::radians(45.0f), aspect, 0.1f, 300.0f);
 }
 
 void Client::stopTerminalInteraction()

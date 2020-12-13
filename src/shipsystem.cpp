@@ -97,7 +97,6 @@ ShipSystem::ShipSystem(const Name& name)
 {
     MessageBus::instance().registerEndpoint(name);
     allSystems.push_back(name);
-    terminalOutput("Type 'manual' to see available commands");
 }
 
 ShipSystem::~ShipSystem()
@@ -267,7 +266,7 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
 
 void ShipSystem::executeCommand(const std::string& command)
 {
-    terminalOutput(fmt::format("# {}\n", command));
+    terminalOutput(fmt::format("root@{}:~# {}\n", name_, command));
     executeCommand(split(command));
 }
 
@@ -291,7 +290,7 @@ void ShipSystem::manCommand()
     terminalOutput("Available commands:\n");
     for (const auto& command : commands_) {
         for (const auto& subCommand : command.subCommands) {
-            terminalOutput(getUsage(command, subCommand));
+            terminalOutput(" * " + getUsage(command, subCommand));
         }
     }
 }
@@ -573,6 +572,8 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
 
     lua.script_file(scriptPath.u8string());
     addBuiltinCommands();
+    terminalOutput("Logged in as root.");
+    terminalOutput("Type 'manual' to see available commands");
 }
 
 LuaShipSystem::~LuaShipSystem()
