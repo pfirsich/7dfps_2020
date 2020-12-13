@@ -8,6 +8,10 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#ifdef _WIN32
+    #include <shellapi.h>
+#endif
+
 #include "constants.hpp"
 #include "gltfimport.hpp"
 #include "graphics.hpp"
@@ -118,7 +122,7 @@ uint32_t Client::showConnectCodeMenu(HostPort& hostPort)
             const char* host = "http://207.154.224.60/";
             if (ImGui::Button("Create Game", ImVec2(buttonWidth, 0.0f))) {
 #ifdef _WIN32
-                ShellExecute(nullptr, "open", host, nullptr, nullptr, SW_SHOWNORMAL);
+                ShellExecuteA(nullptr, "open", host, nullptr, nullptr, SW_SHOWNORMAL);
 #elif __linux__
                 std::system(fmt::format("xdg-open {}", host).c_str());
 #elif __APPLE__
