@@ -1,5 +1,6 @@
 #include "graphics.hpp"
 
+#include <algorithm>
 #include <string_view>
 
 #include <glm/gtx/transform.hpp>
@@ -110,14 +111,14 @@ bool Skybox::load(const std::filesystem::path& posX, const std::filesystem::path
     return true;
 }
 
-void Skybox::draw(const glm::mat4& projection, const glwx::Transform& cameraTransform)
+void Skybox::draw(const Frustum& frustum, const glwx::Transform& cameraTransform)
 {
     static glw::ShaderProgram shader = glwx::makeShaderProgram(skyboxVert, skyboxFrag).value();
     glDisable(GL_CULL_FACE);
     glDepthMask(GL_FALSE);
     // get rid of translation
     auto view = glm::inverse(glm::mat4(glm::mat3(cameraTransform.getMatrix())));
-    shader.setUniform("modelViewProjection", projection * view);
+    shader.setUniform("modelViewProjection", frustum.getMatrix() * view);
     texture.bind(0);
     shader.setUniform("skyboxTexture", 0);
     mesh.draw();
@@ -156,6 +157,46 @@ void Mesh::draw(const glw::ShaderProgram& shader) const
     }
 }
 
+float Plane::distance(const glm::vec3& point) const
+{
+    return glm::dot(normal, point) + d;
+}
+
+void Frustum::setPerspective(float fovy, float aspect, float znear, float zfar)
+{
+    matrix_ = glm::perspective(fovy, aspect, znear, zfar);
+
+    // https://www.iquilezles.org/www/articles/frustum/frustum.htm
+    // Though it seems wrong to me that the z-components increase with fovy, as the should point
+    // more *forwards*, which as iq said in his article, is negative z.
+    // So I changed all the z signs and it works that way (and only that way).
+    const float s = std::sin(fovy);
+    const float c = std::cos(fovy);
+    planes_[0] = Plane { glm::vec3(0.0f, -c, -s), 0.0f }; // top
+    planes_[1] = Plane { glm::vec3(0.0f, c, -s), 0.0f }; // bottom
+    planes_[2] = Plane { glm::vec3(c, 0.0f, -s * aspect), 0.0f }; // left
+    planes_[3] = Plane { glm::vec3(-c, 0.0f, -s * aspect), 0.0f }; // right
+    planes_[4] = Plane { glm::vec3(0.0f, 0.0f, 1.0f), zfar }; // far
+    planes_[5] = Plane { glm::vec3(0.0f, 0.0f, -1.0f), -znear }; // near
+}
+
+const glm::mat4& Frustum::getMatrix() const
+{
+    return matrix_;
+}
+
+bool Frustum::contains(const glm::vec3& center, float radius) const
+{
+    for (size_t i = 0; i < planes_.size(); ++i) {
+        // planes point inward, so negative distance is outside
+        const auto dist = planes_[i].distance(center);
+        if (-dist > radius) {
+            return false;
+        }
+    }
+    return true;
+}
+
 namespace {
 glw::ShaderProgram& getShader()
 {
@@ -185,14 +226,13 @@ RenderStats getRenderStats()
     return renderStats;
 }
 
-void renderSystem(
-    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform)
+void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform)
 {
     const auto& shader = getShader();
     shader.bind();
     shader.setUniform("lightDir", glm::vec3(0.0f, 0.0f, 1.0f));
 
-    shader.setUniform("projectionMatrix", projection);
+    shader.setUniform("projectionMatrix", frustum.getMatrix());
     const auto view = glm::inverse(cameraTransform.getMatrix());
     shader.setUniform("viewMatrix", view);
     shader.setUniform("ambientBlend", 0.8f);
@@ -201,11 +241,19 @@ void renderSystem(
         std::cos(glwx::getTime() * glowFrequency * 2.0f * M_PI), -1.0f, 1.0f, glowMin, glowMax);
 
     world.forEachEntity<const comp::Transform, const comp::Mesh>(
-        [&view, &shader, glowAmount](
+        [&frustum, &view, &shader, glowAmount](
             ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
             const auto model = getModelMatrix(entity, transform);
             shader.setUniform("modelMatrix", model);
             const auto modelView = view * model;
+
+            const auto bsCenter = glm::vec3(modelView * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+            const auto modelScale
+                = std::max({ glm::length(model[0]), glm::length(model[1]), glm::length(model[2]) });
+            const auto bsRadius = mesh->radius * modelScale;
+            if (!frustum.contains(bsCenter, bsRadius))
+                return;
+
             const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
             shader.setUniform("normalMatrix", normal);
 
@@ -225,6 +273,7 @@ void renderSystem(
         });
 }
 
+namespace {
 struct CollisionBoxMesh {
     CollisionBoxMesh()
     {
@@ -240,15 +289,16 @@ struct CollisionBoxMesh {
 
     glwx::Mesh mesh;
 };
+}
 
 void collisionRenderSystem(
-    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform)
+    ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform)
 {
     const auto& shader = getShader();
     static const CollisionBoxMesh box;
     static const auto texture = glwx::makeTexture2D(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-    shader.setUniform("projectionMatrix", projection);
+    shader.setUniform("projectionMatrix", frustum.getMatrix());
     const auto view = glm::inverse(cameraTransform.getMatrix());
     shader.setUniform("viewMatrix", view);
 
@@ -267,6 +317,68 @@ void collisionRenderSystem(
             const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
             shader.setUniform("normalMatrix", normal);
             box.mesh.draw();
+            renderStats.drawCalls++;
+        });
+}
+
+namespace {
+struct BoundingSphereMesh {
+    BoundingSphereMesh()
+    {
+        glw::VertexFormat vfmt;
+        vfmt.add(AttributeLocations::Position, 3, glw::AttributeType::F32);
+        vfmt.add(AttributeLocations::Normal, 3, glw::AttributeType::F32);
+        vfmt.add(AttributeLocations::TexCoord0, 2, glw::AttributeType::U16, true);
+        mesh = glwx::makeSphereMesh(vfmt,
+            { AttributeLocations::Position, AttributeLocations::TexCoord0,
+                AttributeLocations::Normal },
+            1.0f, 32, 24);
+    }
+
+    glwx::Mesh mesh;
+};
+}
+
+void cullingRenderSystem(
+    ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform)
+{
+    const auto& shader = getShader();
+    static const BoundingSphereMesh sphere;
+    static const auto texture = glwx::makeTexture2D(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+    shader.setUniform("projectionMatrix", frustum.getMatrix());
+    const auto view = glm::inverse(cameraTransform.getMatrix());
+    shader.setUniform("viewMatrix", view);
+
+    texture.bind(0);
+    shader.setUniform("baseColorTexture", 0);
+    shader.setUniform("baseColorFactor", glm::vec4(1.0f));
+    shader.setUniform("ambientBlend", 0.2f);
+    shader.setUniform("glowAmount", 0.0f);
+
+    world.forEachEntity<const comp::Transform, const comp::Mesh>(
+        [&frustum, &view, &shader](
+            ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
+            const auto objModel = getModelMatrix(entity, transform);
+            const auto objPos = objModel * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            const auto modelScale = std::max(
+                { glm::length(objModel[0]), glm::length(objModel[1]), glm::length(objModel[2]) });
+            const auto bsRadius = mesh->radius * modelScale;
+            const auto model = glm::translate(glm::vec3(objPos)) * glm::scale(glm::vec3(bsRadius));
+
+            shader.setUniform("modelMatrix", model);
+            const auto modelView = view * model;
+            const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
+            shader.setUniform("normalMatrix", normal);
+
+            const auto bsCenter = glm::vec3(view * objPos);
+            if (frustum.contains(bsCenter, bsRadius)) {
+                shader.setUniform("baseColorFactor", glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+            } else {
+                shader.setUniform("baseColorFactor", glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+            }
+
+            sphere.mesh.draw();
             renderStats.drawCalls++;
         });
 }

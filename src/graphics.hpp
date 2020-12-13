@@ -10,6 +10,27 @@
 #include "components.hpp"
 #include "ecs.hpp"
 
+struct Plane {
+    // as in nx * x + ny * y + nz * z + d = 0
+    glm::vec3 normal = glm::vec3(0.0f);
+    float d = 0.0f;
+
+    float distance(const glm::vec3& point) const;
+};
+
+class Frustum {
+public:
+    void setPerspective(float fovy, float aspect, float znear, float zfar);
+
+    const glm::mat4& getMatrix() const;
+
+    bool contains(const glm::vec3& center, float radius) const;
+
+private:
+    glm::mat4 matrix_ = glm::mat4(1.0f);
+    std::array<Plane, 6> planes_;
+};
+
 struct Material {
     std::shared_ptr<glw::Texture> baseColorTexture = nullptr;
     glm::vec4 baseColor = glm::vec4(1.0f);
@@ -25,10 +46,12 @@ struct Mesh {
         glwx::Primitive primitive;
         std::shared_ptr<Material> material;
         // This is just so the mesh can keep ownership its buffers
-        std::vector<std::shared_ptr<glw::Buffer>> buffers;
+        std::vector<std::shared_ptr<glw::Buffer>> buffers = {};
     };
 
     std::vector<Primitive> primitives;
+    glwx::Aabb aabb = glwx::Aabb {};
+    float radius = 0.0f;
 
     void draw(const glw::ShaderProgram& shader) const;
 };
@@ -41,7 +64,7 @@ struct Skybox {
         const std::filesystem::path& posY, const std::filesystem::path& negY,
         const std::filesystem::path& posZ, const std::filesystem::path& negZ);
 
-    void draw(const glm::mat4& projection, const glwx::Transform& cameraTransform);
+    void draw(const Frustum& frustum, const glwx::Transform& cameraTransform);
 };
 
 namespace comp {
@@ -71,7 +94,10 @@ void resetRenderStats();
 RenderStats getRenderStats();
 
 void collisionRenderSystem(
-    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform);
+    ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);
 
 void renderSystem(
-    ecs::World& world, const glm::mat4& projection, const glwx::Transform& cameraTransform);
+    ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);
+
+void cullingRenderSystem(
+    ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);

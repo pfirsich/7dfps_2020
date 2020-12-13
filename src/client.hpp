@@ -80,6 +80,7 @@ private:
     enet::Host host_;
     glwx::Window window_;
     ecs::World world_;
+    Frustum frustum_;
     PlayerState state_;
     std::unordered_map<PlayerId, ecs::EntityHandle> players_; // excludes self
     std::unordered_map<ShipSystem::Name, TerminalData> terminalData_;
@@ -87,7 +88,6 @@ private:
     std::unique_ptr<Skybox> skybox_;
     ecs::EntityHandle player_;
     ecs::EntityHandle hitMarker_;
-    glm::mat4 projection_;
     float time_ = 0.0f;
     uint32_t frameCounter_ = 0;
     PlayerId playerId_ = InvalidPlayerId;

@@ -19,6 +19,7 @@
 namespace {
 static bool debugCollisionGeometry = false;
 static bool debugRaycast = false;
+static bool debugFrustumCulling = false;
 }
 
 struct Config {
@@ -235,7 +236,7 @@ void Client::resized(size_t width, size_t height)
 {
     glw::State::instance().setViewport(width, height);
     const auto aspect = static_cast<float>(width) / height;
-    projection_ = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 200.0f);
+    frustum_.setPerspective(glm::radians(45.0f), aspect, 0.1f, 200.0f);
 }
 
 void Client::processSdlEvents()
@@ -277,6 +278,10 @@ void Client::processSdlEvents()
             case SDL_SCANCODE_R:
                 if (event.key.keysym.mod & KMOD_CTRL)
                     debugRaycast = !debugRaycast;
+                break;
+            case SDL_SCANCODE_F:
+                if (event.key.keysym.mod & KMOD_CTRL)
+                    debugFrustumCulling = !debugFrustumCulling;
                 break;
 #endif
             default:
@@ -547,10 +552,12 @@ void Client::draw()
     glw::State::instance().resetStatistics();
     resetRenderStats();
     if (debugCollisionGeometry) {
-        collisionRenderSystem(world_, projection_, cameraTransform);
+        collisionRenderSystem(world_, frustum_, cameraTransform);
+    } else if (debugFrustumCulling) {
+        cullingRenderSystem(world_, frustum_, cameraTransform);
     } else {
-        renderSystem(world_, projection_, cameraTransform);
-        skybox_->draw(projection_, cameraTransform);
+        renderSystem(world_, frustum_, cameraTransform);
+        skybox_->draw(frustum_, cameraTransform);
     }
 
     ImGui_ImplOpenGL3_NewFrame();

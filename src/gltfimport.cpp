@@ -125,7 +125,7 @@ struct GltfFile::ImportCache {
         for (const auto& gprim : gmesh.primitives) {
             const auto mode = static_cast<glw::DrawMode>(gprim.mode);
             auto& prim = mesh->primitives.emplace_back(
-                Mesh::Primitive { glwx::Primitive(mode), Material::getDefaultMaterial(), {} });
+                Mesh::Primitive { glwx::Primitive(mode), Material::getDefaultMaterial() });
 
             // I need to determine a vertex format per buffer (which may be used in multiple
             // attributes), so I determine the set of buffers first, then build the formats.
@@ -140,6 +140,11 @@ struct GltfFile::ImportCache {
                 for (const auto& attr : gprim.attributes) {
                     const auto& accessor = gltfFile.accessors[attr.accessor];
                     if (accessor.bufferView.value() == bvIndex) {
+                        if (attr.id == "POSITION") {
+                            mesh->aabb.fit(makeGlm<glm::vec3>(accessor.min));
+                            mesh->aabb.fit(makeGlm<glm::vec3>(accessor.max));
+                        }
+
                         const auto count = static_cast<size_t>(accessor.type);
                         assert(count >= 1 && count <= 4);
                         const auto componentType
@@ -177,6 +182,8 @@ struct GltfFile::ImportCache {
                 prim.material = getMaterial(gltfFile, *gprim.material);
             }
         }
+        mesh->radius = std::max(glm::length(mesh->aabb.min), glm::length(mesh->aabb.max));
+
         meshMap.emplace(meshIndex, mesh);
         return mesh;
     }
