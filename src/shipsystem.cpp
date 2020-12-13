@@ -522,6 +522,18 @@ sol::protected_function_result&& checkError(sol::protected_function_result&& res
     }
     return std::move(res);
 }
+
+MessageBus::Message getMessage(const std::string& messageId, sol::variadic_args va)
+{
+    MessageBus::Message msg { messageId, {} };
+    for (auto v : va) {
+        if (v.is<float>())
+            msg.fields.push_back(v.as<float>());
+        else if (v.is<std::string>())
+            msg.fields.push_back(v.as<std::string>());
+    }
+    return msg;
+}
 }
 
 LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scriptPath)
@@ -545,6 +557,13 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
             [func](const std::string& sender, const MessageBus::Message& msg) {
                 checkError(func(sender, sol::as_args(msg.fields)));
             });
+    });
+    lua["send"].set_function([this](const std::string& destination, const std::string& messageId,
+                                 sol::variadic_args va) {
+        MessageBus::instance().send(getName(), destination, getMessage(messageId, va));
+    });
+    lua["broadcast"].set_function([this](const std::string& messageId, sol::variadic_args va) {
+        MessageBus::instance().broadcast(getName(), getMessage(messageId, va));
     });
     lua["manual"].set_function(
         [this](const std::string& name, const std::string& text) { addManual(name, text); });
