@@ -36,7 +36,7 @@ private:
         std::string output;
     };
 
-    uint32_t showConnectCodeMenu(HostPort& hostPort);
+    uint32_t showConnectCodeMenu(std::optional<HostPort>& hostPort);
     void showError(const std::string& message);
 
     void resized(size_t width, size_t height);

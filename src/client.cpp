@@ -53,7 +53,7 @@ struct Config {
     }
 };
 
-uint32_t Client::showConnectCodeMenu(HostPort& hostPort)
+uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
 {
     static std::regex connectCodeRegex(
         "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\:\\d{1,5}\\:[0-9A-F]{6}$");
@@ -271,8 +271,9 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
     // to time out or something.
 
     if (!hostPort) {
-        hostPort = HostPort { "", 0 };
-        gameCode = showConnectCodeMenu(*hostPort);
+        gameCode = showConnectCodeMenu(hostPort);
+        if (!hostPort)
+            return true;
     }
     resized(window_.getSize().x, window_.getSize().y);
 
