@@ -39,3 +39,10 @@ std::string toLower(const std::string& str);
 std::vector<std::string> split(const std::string& str);
 
 ecs::EntityHandle findEntity(ecs::World& world, const std::string& name);
+
+template <typename T>
+T safeNormalize(const T& vec)
+{
+    const auto len = glm::length(vec) + 1e-5f;
+    return vec / len;
+}

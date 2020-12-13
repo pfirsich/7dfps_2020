@@ -4,6 +4,7 @@
 
 #include "components.hpp"
 #include "constants.hpp"
+#include "util.hpp"
 
 namespace {
 bool intervalsOverlap(float minA, float maxA, float minB, float maxB)
@@ -168,11 +169,11 @@ void playerLookSystem(ecs::World& world, float dt)
 
 void playerControlSystem(ecs::World& world, float dt)
 {
-    static constexpr auto maxSpeed = 5.0f;
+    static constexpr auto maxSpeed = 9.0f;
     static constexpr auto fastBoostFactor = 2;
     static constexpr auto accell = maxSpeed * 5.0f;
     static constexpr auto friction = maxSpeed * 6.0f;
-    // static constexpr auto turnAroundFactor = 2.0f;
+    static constexpr auto turnAroundFactor = 2.0f;
 
     world.forEachEntity<comp::Transform, comp::Velocity, comp::PlayerInputController>(
         [dt](comp::Transform& transform, comp::Velocity& velocity,
@@ -183,16 +184,15 @@ void playerControlSystem(ecs::World& world, float dt)
 
             auto currentMaxSpeed = maxSpeed;
             if (ctrl.sprint->getState()) {
-                currentMaxSpeed *= fastBoostFactor;
+                // currentMaxSpeed *= fastBoostFactor;
             }
 
             if (glm::length(move) > 0.0f) {
                 auto moveWorld = transform.getOrientation() * move;
                 moveWorld.y = 0.0f;
                 velocity.value.y = 0.0f;
-                const auto factor = 1.0f;
-                //= rescale(-glm::dot(glm::normalize(velocity.value), glm::normalize(moveWorld)),
-                //  -1.0f, 1.0f, 1.0f, turnAroundFactor);
+                const auto dot = -glm::dot(safeNormalize(velocity.value), safeNormalize(moveWorld));
+                const auto factor = rescale(dot, -1.0f, 1.0f, 1.0f, turnAroundFactor);
                 velocity.value += moveWorld * factor * accell * dt;
 
                 const auto speed = glm::length(velocity.value);
