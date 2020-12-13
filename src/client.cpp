@@ -1,8 +1,6 @@
 #include "client.hpp"
 
 #include <imgui.h>
-#include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <glm/gtc/constants.hpp>
@@ -11,6 +9,7 @@
 #include "constants.hpp"
 #include "gltfimport.hpp"
 #include "graphics.hpp"
+#include "imgui.hpp"
 #include "physics.hpp"
 #include "shipsystem.hpp"
 #include "sound.hpp"
@@ -70,14 +69,7 @@ bool Client::run(const std::string& host, Port port)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    auto& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-
-    ImGui::StyleColorsDark();
-    ImGui_ImplSDL2_InitForOpenGL(window_.getSdlWindow(), window_.getSdlGlContext());
-    ImGui_ImplOpenGL3_Init("#version 150");
+    initImgui(window_.getSdlWindow(), window_.getSdlGlContext());
 
     if (!initSound()) {
         return false;
@@ -223,9 +215,7 @@ bool Client::run(const std::string& host, Port port)
 
     enet_peer_disconnect_now(serverPeer_, 0);
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
+    deinitImgui();
 
     deinitSound();
 
@@ -575,7 +565,7 @@ void Client::draw()
         ImGui::SetNextWindowSize(ImVec2(size.x - margin * 2.0f, size.y - margin * 2.0f));
         ImGui::Begin("Terminal", nullptr, ImGuiWindowFlags_NoDecoration);
         ImGui::BeginChild(
-            "Child", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 35));
+            "Child", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 40));
         ImGui::TextUnformatted(terminalData_[terminalState.systemName].output.c_str());
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
             ImGui::SetScrollHereY(1.0f);
