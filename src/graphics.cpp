@@ -167,15 +167,19 @@ void Frustum::setPerspective(float fovy, float aspect, float znear, float zfar)
     matrix_ = glm::perspective(fovy, aspect, znear, zfar);
 
     // https://www.iquilezles.org/www/articles/frustum/frustum.htm
-    // Though it seems wrong to me that the z-components increase with fovy, as the should point
+    // Though it seems wrong to me that the z-components increase with fovy, as they should point
     // more *forwards*, which as iq said in his article, is negative z.
     // So I changed all the z signs and it works that way (and only that way).
+    // Also we need to normalize the normal vectors for left/right, since we want to make sphere
+    // checks and not just point checks (as iq did).
+    // That `* aspect`-trick is INSANE and it took me 20 minutes to verify that it works. iq is a
+    // beast!
     const float s = std::sin(fovy);
     const float c = std::cos(fovy);
     planes_[0] = Plane { glm::vec3(0.0f, -c, -s), 0.0f }; // top
     planes_[1] = Plane { glm::vec3(0.0f, c, -s), 0.0f }; // bottom
-    planes_[2] = Plane { glm::vec3(c, 0.0f, -s * aspect), 0.0f }; // left
-    planes_[3] = Plane { glm::vec3(-c, 0.0f, -s * aspect), 0.0f }; // right
+    planes_[2] = Plane { glm::normalize(glm::vec3(c, 0.0f, -s * aspect)), 0.0f }; // left
+    planes_[3] = Plane { glm::normalize(glm::vec3(-c, 0.0f, -s * aspect)), 0.0f }; // right
     planes_[4] = Plane { glm::vec3(0.0f, 0.0f, 1.0f), zfar }; // far
     planes_[5] = Plane { glm::vec3(0.0f, 0.0f, -1.0f), -znear }; // near
 }
