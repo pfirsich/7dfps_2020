@@ -13,7 +13,7 @@ public:
     Server() = default;
 
     // this blocks until you call stop
-    bool run(const std::string& host, Port port);
+    bool run(const std::string& host, Port port, uint32_t gameCode);
 
     bool isRunning() const;
 
@@ -92,6 +92,7 @@ private:
     std::unordered_map<ShipSystem::Name, ShipSystemData> shipSystems_;
     float time_ = 0.0f;
     uint32_t frameCounter_ = 0;
+    uint32_t connectCode_ = 0;
     std::atomic<bool> running_ { false };
     bool started_ = false;
 };

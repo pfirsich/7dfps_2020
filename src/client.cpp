@@ -1,5 +1,7 @@
 #include "client.hpp"
 
+#include <regex>
+
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
@@ -47,7 +49,131 @@ struct Config {
     }
 };
 
-bool Client::run(const std::string& host, Port port)
+uint32_t Client::showConnectCodeMenu(HostPort& hostPort)
+{
+    static std::regex connectCodeRegex(
+        "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\:\\d{1,5}\\:[0-9A-F]{6}$");
+    SDL_SetRelativeMouseMode(SDL_FALSE);
+    bool menuRunning = true;
+    uint32_t gameCode;
+    while (menuRunning) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event) != 0) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+            switch (event.type) {
+            case SDL_QUIT:
+                menuRunning = false;
+                break;
+            }
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        drawImgui(window_.getSdlWindow(), [this, &hostPort, &menuRunning, &gameCode]() {
+            static std::string connectCode;
+
+            const auto size = window_.getSize();
+            const auto paneSize = glm::vec2(500.0f, 165.0f);
+            ImGui::SetNextWindowPos(
+                ImVec2(size.x / 2 - paneSize.x / 2, size.y / 2 - paneSize.y / 2));
+            ImGui::SetNextWindowSize(ImVec2(paneSize.x, paneSize.y));
+            ImGui::Begin("Menu", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+                    | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
+
+            if (connectCode.empty()) {
+                ImGui::TextUnformatted("Paste connect code:");
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.0, 0.0f, 1.0f), "Invalid connect code");
+            }
+            ImGui::PushItemWidth(-1);
+            ImGui::InputText("", &connectCode, ImGuiInputTextFlags_EnterReturnsTrue);
+            ImGui::PopItemWidth();
+
+            std::smatch match;
+            if (std::regex_match(connectCode, match, connectCodeRegex)) {
+                const auto firstColon = connectCode.find(':');
+                const auto secondColon = connectCode.find(':', firstColon + 1);
+                assert(firstColon != std::string::npos && secondColon != std::string::npos);
+                const auto host = connectCode.substr(0, firstColon);
+                const auto port = parseInt<Port>(
+                    connectCode.substr(firstColon + 1, secondColon - firstColon - 1));
+                const auto gameCode_ = parseInt<uint32_t>(connectCode.substr(secondColon + 1), 16);
+                if (port && gameCode) {
+                    hostPort = HostPort { host, *port };
+                    gameCode = *gameCode_;
+                    menuRunning = false;
+                }
+            }
+
+            ImGui::Dummy(ImVec2(0.0f, 25.0f));
+            const auto textIndent = paneSize.x / 2 - 25.0f;
+            ImGui::Indent(textIndent);
+            ImGui::TextUnformatted("- or -");
+            ImGui::Unindent(textIndent);
+            ImGui::Dummy(ImVec2(0.0f, 25.0f));
+
+            const auto buttonWidth = 150.0f;
+            ImGui::Indent(paneSize.x / 2 - buttonWidth / 2);
+            const char* host = "http://207.154.224.60/";
+            if (ImGui::Button("Create Game", ImVec2(buttonWidth, 0.0f))) {
+#ifdef _WIN32
+                ShellExecute(nullptr, "open", host, nullptr, nullptr, SW_SHOWNORMAL);
+#elif __linux__
+                std::system(fmt::format("xdg-open {}", host).c_str());
+#elif __APPLE__
+                std::system(fmt::format("open {}", host).c_str());
+#endif
+            }
+
+            ImGui::End();
+        });
+
+        window_.swap();
+    }
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+    return gameCode;
+}
+
+void Client::showError(const std::string& message)
+{
+    SDL_SetRelativeMouseMode(SDL_FALSE);
+    bool running = true;
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event) != 0) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
+            switch (event.type) {
+            case SDL_QUIT:
+                running = false;
+                break;
+            }
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        drawImgui(window_.getSdlWindow(), [this, &message]() {
+            static std::string connectCode;
+
+            const auto size = window_.getSize();
+            const auto paneSize = glm::vec2(600.0f, 50.0f);
+            ImGui::SetNextWindowPos(
+                ImVec2(size.x / 2 - paneSize.x / 2, size.y / 2 - paneSize.y / 2));
+            ImGui::SetNextWindowSize(ImVec2(paneSize.x, paneSize.y));
+            ImGui::Begin("Menu", nullptr,
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+                    | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
+
+            ImGui::TextUnformatted(message.c_str());
+
+            ImGui::End();
+        });
+
+        window_.swap();
+    }
+}
+
+bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
 {
     assert(!started_);
     started_ = true;
@@ -64,7 +190,6 @@ bool Client::run(const std::string& host, Port port)
     if (config.maximize)
         window_.maximize();
     window_.setSwapInterval(config.vsync ? 1 : 0);
-    resized(window_.getSize().x, window_.getSize().y);
     glw::State::instance().setDepthFunc(glw::DepthFunc::Lequal); // needed for skybox
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -81,6 +206,13 @@ bool Client::run(const std::string& host, Port port)
     // TODO: Somehow filter some output out, because it's too much to learn anything right now
     // glwx::debug::init();
 #endif
+
+    drawImgui(window_.getSdlWindow(), [this]() {
+        ImGui::Begin("Loading..");
+        ImGui::TextUnformatted("Loading..");
+        ImGui::End();
+    });
+    window_.swap();
 
     skybox_ = std::make_unique<Skybox>();
     if (!skybox_->load("media/skybox/1.png", "media/skybox/3.png", "media/skybox/5.png",
@@ -131,27 +263,30 @@ bool Client::run(const std::string& host, Port port)
 
     world_.flush();
 
-    soloud.setLooping(playEntitySound("engineIdle", "engine"), true);
-    soloud.setLooping(playEntitySound("engineIdle", "engine", 1.0f, 2.0f), true);
-
     // We load everything else before attempting to connect, because we don't want a connection
     // to time out or something.
 
+    if (!hostPort) {
+        hostPort = HostPort { "", 0 };
+        gameCode = showConnectCodeMenu(*hostPort);
+    }
+    resized(window_.getSize().x, window_.getSize().y);
+
     host_ = enet::Host(static_cast<uint8_t>(Channel::Count), 0, 0);
     if (!host_) {
-        fmt::print(stderr, "Could not create client host.\n");
+        showError("Could not create client host.");
         return false;
     }
 
-    const auto addr = enet::getAddress(host, port);
+    const auto addr = enet::getAddress(hostPort->host, hostPort->port);
     if (!addr) {
-        fmt::print(stderr, "Could not get address.\n");
+        showError("Could not resolve address.");
         return false;
     }
 
-    serverPeer_ = host_.connect(*addr, 2, protocolVersion);
+    serverPeer_ = host_.connect(*addr, 2, getConnectCode(gameCode));
     if (!serverPeer_) {
-        fmt::print(stderr, "Could not connect.\n");
+        showError("Could not connect.");
         return false;
     }
     fmt::print("Connecting to {}:{}..\n", enet::getIp(*addr), addr->port);
@@ -161,7 +296,7 @@ bool Client::run(const std::string& host, Port port)
     if (event && std::holds_alternative<enet::ConnectEvent>(*event)) {
         fmt::print("Connected.\n");
     } else {
-        fmt::print(stderr, "Connection failed.\n");
+        showError("Connection failed.");
         enet_peer_reset(serverPeer_);
         return false;
     }
@@ -173,11 +308,14 @@ bool Client::run(const std::string& host, Port port)
             break;
     }
     if (playerId_ == InvalidPlayerId) {
-        fmt::print(stderr, "Did not receive server hello\n");
+        showError("Handshake failed (wrong gamecode or mismatching versions).");
         enet_peer_disconnect_now(serverPeer_, 0);
         return false;
     }
     fmt::print("Player id: {}\n", playerId_);
+
+    soloud.setLooping(playEntitySound("engineIdle", "engine"), true);
+    soloud.setLooping(playEntitySound("engineIdle", "engine", 1.0f, 2.0f), true);
 
     running_ = true;
     time_ = 0.0f;
@@ -340,7 +478,8 @@ void Client::handleInteractions()
                 if (const auto ladder = hit->entity.getPtr<comp::Ladder>()) {
                     // Sometimes we use a ladder, when we are too far away from it and end up
                     // teleporting into a wall.
-                    // So first move closer to the ladder (along the ray, but don't change height).
+                    // So first move closer to the ladder (along the ray, but don't change
+                    // height).
                     const auto& collider = player_.get<comp::CylinderCollider>();
                     const auto dir = glm::vec3(rayDir.x, 0.0f, rayDir.z);
                     while (!findFirstCollision(world_, player_, trafo, collider)) {
@@ -393,7 +532,8 @@ void Client::update(float dt)
         integrationSystem(world_, dt);
         handleInteractions();
 
-        // Negative velocity, because otherwise the doppler effect will be the wrong way around :)
+        // Negative velocity, because otherwise the doppler effect will be the wrong way around
+        // :)
         updateListener(player_.get<comp::Transform>(), -player_.get<comp::Velocity>().value);
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
@@ -586,39 +726,37 @@ void Client::draw()
         skybox_->draw(frustum_, cameraTransform);
     }
 
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame(window_.getSdlWindow());
-    ImGui::NewFrame();
+    // Only one drawImgui call per frame!
+    // Also make sure it's called, even if we don't draw anything, so input is handled correctly
+    // (otherwise widgets that are not drawn keep focus).
+    drawImgui(window_.getSdlWindow(), [this]() {
+        if (std::holds_alternative<TerminalState>(state_)) {
+            // ImGui::ShowDemoWindow();
 
-    // ImGui::ShowDemoWindow();
+            auto& terminalState = std::get<TerminalState>(state_);
 
-    if (std::holds_alternative<TerminalState>(state_)) {
-        auto& terminalState = std::get<TerminalState>(state_);
-
-        constexpr auto margin = 200.0f;
-        const auto size = window_.getSize();
-        ImGui::SetNextWindowPos(ImVec2(margin, margin));
-        ImGui::SetNextWindowSize(ImVec2(size.x - margin * 2.0f, size.y - margin * 2.0f));
-        ImGui::Begin("Terminal", nullptr, ImGuiWindowFlags_NoDecoration);
-        ImGui::BeginChild(
-            "Child", ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 40));
-        ImGui::TextUnformatted(terminalData_[terminalState.systemName].output.c_str());
-        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-            ImGui::SetScrollHereY(1.0f);
-        ImGui::EndChild();
-        ImGui::PushItemWidth(-1);
-        bool focus = false;
-        if (ImGui::InputText(
-                "Execute", &terminalState.terminalInput, ImGuiInputTextFlags_EnterReturnsTrue)) {
-            terminalState.terminalInput = "";
+            constexpr auto margin = 200.0f;
+            const auto size = window_.getSize();
+            ImGui::SetNextWindowPos(ImVec2(margin, margin));
+            ImGui::SetNextWindowSize(ImVec2(size.x - margin * 2.0f, size.y - margin * 2.0f));
+            ImGui::Begin("Terminal", nullptr, ImGuiWindowFlags_NoDecoration);
+            ImGui::BeginChild("Child",
+                ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 40));
+            ImGui::TextUnformatted(terminalData_[terminalState.systemName].output.c_str());
+            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+                ImGui::SetScrollHereY(1.0f);
+            ImGui::EndChild();
+            ImGui::PushItemWidth(-1);
+            bool focus = false;
+            if (ImGui::InputText("Execute", &terminalState.terminalInput,
+                    ImGuiInputTextFlags_EnterReturnsTrue)) {
+                terminalState.terminalInput = "";
+            }
+            ImGui::SetKeyboardFocusHere(-1);
+            ImGui::PopItemWidth();
+            ImGui::End();
         }
-        ImGui::SetKeyboardFocusHere(-1);
-        ImGui::PopItemWidth();
-        ImGui::End();
-    }
-
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    });
 
     window_.swap();
 }

@@ -44,6 +44,19 @@ Port getPort(const std::map<std::string, docopt::value>& args)
     return *port;
 }
 
+uint32_t getGameCode(const std::map<std::string, docopt::value>& args)
+{
+    if (args.at("--gamecode")) {
+        const auto gameCode = parseInt<uint32_t>(args.at("--gamecode").asString(), 16);
+        if (!gameCode) {
+            fmt::print(stderr, "Gamecode must be uint32_t\n{}\n", usage);
+            std::exit(255);
+        }
+        return *gameCode;
+    }
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
     if (enet_initialize()) {
@@ -52,14 +65,16 @@ int main(int argc, char** argv)
     }
     atexit(enet_deinitialize);
 
-    const auto args = docopt::docopt(usage, { argv + 1, argv + argc }, true, version);
-    // for (auto const& arg : args) std::cout << arg.first << ": " << arg.second << std::endl;
+    const auto args
+        = docopt::docopt(usage, { argv + 1, argv + argc }, true, std::to_string(version));
+    for (auto const& arg : args)
+        std::cout << arg.first << ": " << arg.second << std::endl;
 
     if (args.at("solo").asBool()) {
         Server server;
         std::atomic<bool> serverFailed { false };
         std::thread serverThread([&server, &serverFailed]() {
-            if (!server.run("127.0.0.1", 8192))
+            if (!server.run("127.0.0.1", 8192, 0))
                 serverFailed.store(true);
         });
 
@@ -75,7 +90,7 @@ int main(int argc, char** argv)
         fmt::print("Server started\n");
 
         Client client;
-        const auto res = client.run("127.0.0.1", 8192);
+        const auto res = client.run(HostPort { "127.0.0.1", 8192 }, 0);
         if (!res) {
             fmt::print(stderr, "Error starting client\n");
         }
@@ -88,7 +103,8 @@ int main(int argc, char** argv)
         return res ? 0 : 1;
     } else if (args.at("connect").asBool()) {
         Client client;
-        const auto res = client.run(args.at("<host>").asString(), getPort(args));
+        const auto res = client.run(
+            HostPort { args.at("<host>").asString(), getPort(args) }, getGameCode(args));
         if (!res) {
             fmt::print(stderr, "Error starting client\n");
         }
@@ -96,15 +112,20 @@ int main(int argc, char** argv)
         return res ? 0 : 1;
     } else if (args.at("server").asBool()) {
         Server server;
-        const auto res = server.run(args.at("<host>").asString(), getPort(args));
+        const auto res = server.run(args.at("<host>").asString(), getPort(args), getGameCode(args));
         if (!res) {
             fmt::print(stderr, "Error starting server\n");
         }
         fmt::print("Server stopped\n");
         return res ? 0 : 1;
     } else {
-        fmt::print(stderr, "Not yet implemented.\n{}\n", usage);
-        return 1;
+        Client client;
+        const auto res = client.run(std::nullopt, 0);
+        if (!res) {
+            fmt::print(stderr, "Error starting client\n");
+        }
+        fmt::print("Client stopped\n");
+        return res ? 0 : 1;
     }
     return 0;
 }

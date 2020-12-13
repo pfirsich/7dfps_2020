@@ -21,14 +21,16 @@ struct SoundData {
 };
 std::unordered_map<std::string, SoundData> sounds;
 
-SoundData& getSound(const std::string& name)
+SoundData* getSound(const std::string& name)
 {
+    static std::unordered_map<std::string, bool> printedMissingNotice;
     const auto it = sounds.find(name);
-    if (it == sounds.end()) {
-        fmt::print(stderr, "Could not play unknown sound '{}'\n", name);
-        std::abort();
+    if (it == sounds.end() && !printedMissingNotice[name]) {
+        fmt::print(stderr, "Attempt to play sound that is not assigned: '{}'\n", name);
+        printedMissingNotice[name] = true;
+        return nullptr;
     }
-    return it->second;
+    return &(it->second);
 }
 
 constexpr float getRolloff(float minDistance, float halfDistance)
@@ -104,8 +106,10 @@ void deinitSound()
 
 SoLoud::handle playSound(const std::string& name, float volume, float playbackSpeed)
 {
-    const auto& sound = getSound(name);
-    auto handle = soloud.play(*sound.source, sound.volume * volume, 0.0f, true);
+    const auto sound = getSound(name);
+    if (!sound)
+        return 0;
+    auto handle = soloud.play(*sound->source, sound->volume * volume, 0.0f, true);
     soloud.setRelativePlaySpeed(handle, playbackSpeed);
     soloud.setPause(handle, false);
     return handle;
@@ -114,9 +118,11 @@ SoLoud::handle playSound(const std::string& name, float volume, float playbackSp
 SoLoud::handle play3dSound(
     const std::string& name, const glm::vec3& position, float volume, float playbackSpeed)
 {
-    const auto& sound = getSound(name);
-    auto handle = soloud.play3d(*sound.source, position.x, position.y, position.z, 0.0f, 0.0f, 0.0f,
-        sound.volume * volume, true);
+    const auto sound = getSound(name);
+    if (!sound)
+        return 0;
+    auto handle = soloud.play3d(*sound->source, position.x, position.y, position.z, 0.0f, 0.0f,
+        0.0f, sound->volume * volume, true);
     soloud.setRelativePlaySpeed(handle, playbackSpeed);
     soloud.setPause(handle, false);
     return handle;

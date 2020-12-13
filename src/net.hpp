@@ -6,6 +6,7 @@
 
 #include "enet.hpp"
 #include "serialization.hpp"
+#include "version.hpp"
 
 static constexpr size_t maxPlayers = 4;
 static constexpr uint32_t protocolVersion = 1;
@@ -13,6 +14,11 @@ static constexpr size_t tickRate = 60;
 
 using PlayerId = uint32_t;
 static constexpr auto InvalidPlayerId = std::numeric_limits<PlayerId>::max();
+
+struct HostPort {
+    std::string host;
+    Port port;
+};
 
 enum class Channel : uint8_t {
     Unreliable = 0,
@@ -189,4 +195,9 @@ bool sendMessage(
         return false;
     }
     return true;
+}
+
+constexpr uint32_t getConnectCode(uint32_t gameCode)
+{
+    return gameCode << 24 | version;
 }

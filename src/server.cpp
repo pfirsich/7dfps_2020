@@ -19,10 +19,12 @@ struct NetworkPlayer {
 };
 }
 
-bool Server::run(const std::string& host, Port port)
+bool Server::run(const std::string& host, Port port, uint32_t gameCode)
 {
     assert(!started_);
     started_ = true;
+
+    connectCode_ = getConnectCode(gameCode);
 
     fmt::print("Loading map..\n");
 
@@ -133,10 +135,10 @@ void Server::processEnetEvents()
     while ((event = host_.service())) {
         if (const auto connEvent = std::get_if<enet::ConnectEvent>(&event.value())) {
             // note peer->connectID is just a random value generated on the peer
-            if (connEvent->data != protocolVersion) {
+            if (connEvent->data != connectCode_) {
                 // disconnect now, so peer is reset and we have a free slot for another
                 // client!
-                enet_peer_disconnect_now(connEvent->peer, protocolVersion);
+                enet_peer_disconnect_now(connEvent->peer, connectCode_);
             } else {
                 connectPeer(connEvent->peer);
             }

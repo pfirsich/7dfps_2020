@@ -1,2 +1,3 @@
 #pragma once
-constexpr const char* version = "<development>";
+// development is 0
+constexpr const uint8_t version = 0;

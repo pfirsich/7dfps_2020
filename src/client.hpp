@@ -16,7 +16,7 @@ public:
     Client() = default;
 
     // this blocks until the window is closed or the player ends the game
-    bool run(const std::string& host, Port port);
+    bool run(std::optional<HostPort> hostPort, uint32_t gameCode);
 
 private:
     struct MoveState {
@@ -35,6 +35,9 @@ private:
         std::string input;
         std::string output;
     };
+
+    uint32_t showConnectCodeMenu(HostPort& hostPort);
+    void showError(const std::string& message);
 
     void resized(size_t width, size_t height);
 

@@ -86,3 +86,16 @@ void deinitImgui()
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 }
+
+void drawImgui(SDL_Window* window, std::function<void(void)> func)
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame(window);
+    ImGui::NewFrame();
+
+    // ImGui::ShowDemoWindow();
+    func();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
