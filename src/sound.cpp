@@ -50,13 +50,13 @@ struct SoundProperties {
         } else if (obj.is<sol::table>()) {
             const auto table = obj.as<sol::table>();
             auto props = SoundProperties { table["file"].get<std::string>() };
-            if (table["volume"] != sol::nil)
+            if (table["volume"] != nullptr)
                 props.volume = table["volume"].get<float>();
-            if (table["halfDistance"] != sol::nil)
+            if (table["halfDistance"] != nullptr)
                 props.halfDistance = table["halfDistance"].get<float>();
-            if (table["minDistance"] != sol::nil)
+            if (table["minDistance"] != nullptr)
                 props.minDistance = table["minDistance"].get<float>();
-            if (table["maxDistance"] != sol::nil)
+            if (table["maxDistance"] != nullptr)
                 props.maxDistance = table["maxDistance"].get<float>();
             return props;
         }
