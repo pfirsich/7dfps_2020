@@ -188,7 +188,7 @@ std::optional<std::vector<ShipSystem::CommandArg>> ShipSystem::parseCommandArgs(
                 terminalOutput("Invalid percentage value\n");
                 return std::nullopt;
             }
-            parsed.push_back(*f);
+            parsed.push_back(*f / 100.0f);
         } else if (argDef == "STRING") {
             parsed.push_back(arg);
         } else if (argDef == "FLOAT") {

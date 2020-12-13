@@ -8,7 +8,7 @@ function jitter(val, rel, abs)
 end
 
 function clamp(val, lo, hi)
-    return math.min(math.max(v, lo), hi)
+    return math.min(math.max(val, lo), hi)
 end
 
 function lerp(a, b, t)

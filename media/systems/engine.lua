@@ -42,13 +42,12 @@ tick(1.0, function()
         temperature = approachExp(temperature, tempTarget, 0.3)
 
         if temperature > temperatureMaxFine * 1.2 then
-        log("", logLevel.ERROR, "Engine over-heated")
+            log("", logLevel.ERROR, "Engine over-heated")
             state = {
                 name = "off"
             }
             return
         end
-
 
         local powerUsage = lerp(powerUsageMin, powerUsageMax, throttle);
         send("reactor", "requestEnergy", powerUsage)
