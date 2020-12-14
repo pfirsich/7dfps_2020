@@ -61,7 +61,7 @@ private:
     void disconnectPlayer(PlayerId id);
     void receive(PlayerId id, const enet::Packet& packet);
     void findSpawnPosition(Player& player);
-    std::string getUsedTerminal(PlayerId id) const;
+    std::optional<std::string> getUsedTerminal(PlayerId id) const;
 
     template <MessageType MsgType>
     void processMessage(Player& player, uint32_t frameNumber, ReadBuffer& buffer)

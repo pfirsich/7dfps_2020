@@ -231,6 +231,10 @@ void Server::disconnectPlayer(PlayerId id)
     players_.erase(players_.begin() + idx);
     world_.flush();
     fmt::print("Client disconnected (id = {})\n", id);
+    const auto terminal = getUsedTerminal(id);
+    if (terminal) {
+        shipSystems_.at(*terminal).terminalUser = InvalidPlayerId;
+    }
 }
 
 #define MESSAGE_CASE(Type)                                                                         \
@@ -270,14 +274,13 @@ void Server::processMessage(
     }
 }
 
-std::string Server::getUsedTerminal(PlayerId id) const
+std::optional<std::string> Server::getUsedTerminal(PlayerId id) const
 {
     for (const auto& [name, system] : shipSystems_) {
         if (system.terminalUser == id)
             return name;
     }
-    assert(false);
-    return "";
+    return std::nullopt;
 }
 
 void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
@@ -285,7 +288,12 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
 {
     if (message.terminal.empty()) {
         const auto terminal = getUsedTerminal(player.id);
-        shipSystems_.at(terminal).terminalUser = InvalidPlayerId;
+        if (!terminal) {
+            fmt::print(stderr, "Player {} stopped using a terminal when no terminal was used.\n",
+                player.id);
+            return;
+        }
+        shipSystems_.at(*terminal).terminalUser = InvalidPlayerId;
     } else {
         const auto it = shipSystems_.find(message.terminal);
         if (it == shipSystems_.end())
@@ -303,12 +311,21 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
     const Message<MessageType::ClientUpdateTerminalInput>& message)
 {
     const auto terminal = getUsedTerminal(player.id);
-    shipSystems_.at(terminal).terminalInput = message.input;
+    if (!terminal) {
+        fmt::print("Player {} sent a terminal update without using a terminal\n", player.id);
+        return;
+    }
+    shipSystems_.at(*terminal).terminalInput = message.input;
 }
 
 void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
     const Message<MessageType::ClientExecuteCommand>& message)
 {
     const auto system = getUsedTerminal(player.id);
-    shipSystems_.at(system).system->executeCommand(message.command);
+    if (!system) {
+        fmt::print("Player {} executed a command on a terminal update without using a terminal\n",
+            player.id);
+        return;
+    }
+    shipSystems_.at(*system).system->executeCommand(message.command);
 }
