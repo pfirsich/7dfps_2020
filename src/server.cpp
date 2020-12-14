@@ -44,8 +44,6 @@ bool Server::run(const std::string& host, Port port, uint32_t gameCode)
         ShipSystemData { std::make_unique<LuaShipSystem>("engine", "media/systems/engine.lua") });
     shipSystems_.emplace(
         "nav", ShipSystemData { std::make_unique<LuaShipSystem>("nav", "media/systems/nav.lua") });
-    shipSystems_.emplace("engine",
-        ShipSystemData { std::make_unique<LuaShipSystem>("engine", "media/systems/engine.lua") });
     shipSystems_.emplace("shields",
         ShipSystemData { std::make_unique<LuaShipSystem>("shields", "media/systems/shields.lua") });
     shipSystems_.emplace(
