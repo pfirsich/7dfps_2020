@@ -8,22 +8,26 @@ terminalOutput([[
 
 ]])
 
+terminalOutput("System log updated. See: 'log'");
+terminalOutput("");
+
 local state = {
     name = "off",
 }
 
 logs("")
 
-log("", logLevel.INFO, "Fuling complete")
+log("", logLevel.INFO, "Fueling complete")
 log("", logLevel.INFO, "Ship detached from omega station")
 log("", logLevel.INFO, "All systems in stand by")
 log("", logLevel.INFO, "System status check complete: systems nominal")
 log("", logLevel.INFO, "Current destiation: Veros ")
+log("", logLevel.INFO, "Jump not ready: Navigation offline")
 
 -- update
-tick(1.0, function()
+tick(2.0, function()
     if state.name == 'booting' then
-        state.progress = state.progress + 0.025
+        state.progress = state.progress + 0.15
         if state.progress < 1 then
             log("", logLevel.INFO, ("Boot Progress: %d%%"):format(state.progress * 100))
         else
@@ -55,12 +59,27 @@ command("boot", "", {}, function()
     log("", logLevel.INFO, "Booting navigation systems..")
 
     terminalOutput("Boot initiated")
-    terminalOutput("Check logs to see progress")
+    terminalOutput("Check log to see progress")
 
     state = {
         name = "booting",
         progress = 0,
     }
+end)
+
+command("jump", "", {}, function()
+    if state.name ~= "running" then
+        terminalOutput("Can not jump. Navigation offline.")
+        log("", logLevel.WARNING, "Jump failed")
+        return
+    end
+    if state.name == "running" then
+        -- TODO: get actual system status
+        log("", logLevel.INFO, "Ship overview:")
+        log("", logLevel.INFO, "* Engine: off")
+        log("", logLevel.INFO, "* Shields: off")
+        return
+    end
 end)
 
 
