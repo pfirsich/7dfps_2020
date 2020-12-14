@@ -11,8 +11,12 @@ Y888   /    d88P
 
 logs("")
 
-tick(4.0, function()
+tick(8.0, function()
     log("", logLevel.INFO, ("Water Consumption: %f L/min"):format(jitter(0.12, 0.1, 0.3)))
+end)
+
+tick(6.0, function()
+    log("", logLevel.INFO, ("Water Collection: %f L/min"):format(jitter(0.12, 0.1, 0.3)))
 end)
 
 manual("o2", [[

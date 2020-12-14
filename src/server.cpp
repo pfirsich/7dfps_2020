@@ -43,6 +43,12 @@ bool Server::run(const std::string& host, Port port, uint32_t gameCode)
     shipSystems_.emplace("engine",
         ShipSystemData { std::make_unique<LuaShipSystem>("engine", "media/systems/engine.lua") });
     shipSystems_.emplace(
+        "nav", ShipSystemData { std::make_unique<LuaShipSystem>("nav", "media/systems/nav.lua") });
+    shipSystems_.emplace("engine",
+        ShipSystemData { std::make_unique<LuaShipSystem>("engine", "media/systems/engine.lua") });
+    shipSystems_.emplace("shields",
+        ShipSystemData { std::make_unique<LuaShipSystem>("shields", "media/systems/shields.lua") });
+    shipSystems_.emplace(
         "o2", ShipSystemData { std::make_unique<LuaShipSystem>("o2", "media/systems/o2.lua") });
 
     const auto addr = enet::getAddress(host, port);
