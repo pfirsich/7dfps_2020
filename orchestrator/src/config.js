@@ -1,6 +1,4 @@
 module.exports = {
-  gameNameSlug: "7dfps",
-
   maxVms: 8,
 
   maxGamesOnVm: 10,
@@ -24,6 +22,6 @@ module.exports = {
     // Orchestrator Key
     "46:17:b4:bd:7d:bf:f1:4e:40:de:e3:d8:77:a3:bf:41",
   ],
-  vmTags: ["7dfps-game-vm"],
-  vmPrefix: "7dfps-game-vm-",
+  vmTags: ["complexity-vm"],
+  vmPrefix: "complexity-vm-",
 };

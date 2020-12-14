@@ -54,7 +54,7 @@ async function startVm({ region }) {
     timeStarted: "NOW()",
   });
 
-  const name = `${config.gameNameSlug}${vm.vmId}`;
+  const name = `${config.vmPrefix}${vm.vmId}`;
   console.log(`Starting droplet: ${name}`);
 
   const result = await doClient.droplets.create({
