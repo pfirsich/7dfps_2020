@@ -9,11 +9,11 @@ Y888   /    d88P
 
 ]])
 
-log("", logLevel.INFO, "Water Consumption: 0.215 L/min")
-log("", logLevel.INFO, "Water Consumption: 0.221 L/min")
-log("", logLevel.INFO, "Water Consumption: 0.211 L/min")
-log("", logLevel.INFO, "Water Consumption: 0.217 L/min")
-log("", logLevel.INFO, "Water Consumption: 0.232 L/min")
+logs("")
+
+tick(4.0, function()
+    log("", logLevel.INFO, ("Water Consumption: %f L/min"):format(jitter(0.12, 0.1, 0.3)))
+end)
 
 manual("o2", [[
 The life support of your system
