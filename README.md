@@ -1,5 +1,9 @@
 # ARBITRARY COMPLEXITY
 
+Made for 7DFPS 2020
+
+see here: https://pfirsich.itch.io/arbitrary-complexity
+
 ## Running
 
 ### Windows
