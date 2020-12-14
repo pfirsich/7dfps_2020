@@ -77,7 +77,7 @@ for i = 1, coreCount do
 end
 
 subscribe("requestEnergy", function(sender, amount)
-    log("", logLevel.INFO, ("%s requested %f KW/S"):format(amount, sender))
+    log("", logLevel.INFO, ("%s requested %f KW/S"):format(sender, amount))
     -- TODO: drain battery
     send(sender, "provideEnergy", amount)
 end)
