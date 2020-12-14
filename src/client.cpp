@@ -9,7 +9,7 @@
 #include <glm/gtc/quaternion.hpp>
 
 #ifdef _WIN32
-    #include <shellapi.h>
+#include <shellapi.h>
 #endif
 
 #include "constants.hpp"
@@ -119,7 +119,7 @@ uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
 
             const auto buttonWidth = 150.0f;
             ImGui::Indent(paneSize.x / 2 - buttonWidth / 2);
-            const char* host = "http://207.154.224.60/";
+            const char* host = "http://arbitrarycomplexity.sudohack.net/";
             if (ImGui::Button("Create Game", ImVec2(buttonWidth, 0.0f))) {
 #ifdef _WIN32
                 ShellExecuteA(nullptr, "open", host, nullptr, nullptr, SW_SHOWNORMAL);
@@ -190,7 +190,8 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         config.loadFromLua("config.lua");
     else if (fs::exists("default.config.lua"))
         config.loadFromLua("default.config.lua");
-    window_ = glwx::makeWindow("7DFPS", config.width, config.height, config.props).value();
+    window_ = glwx::makeWindow("ARBITRARY COMPLEXITY", config.width, config.height, config.props)
+                  .value();
     if (config.maximize)
         window_.maximize();
     window_.setSwapInterval(config.vsync ? 1 : 0);
@@ -350,9 +351,9 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         fps++;
         if (nextFps < now) {
             const auto stats = glw::State::instance().getStatistics();
-            const auto title = fmt::format(
-                "7DFPS - FPS: {}, draw calls: {}, shader binds: {}, texture binds: {}", fps,
-                getRenderStats().drawCalls, stats.shaderBinds, stats.textureBinds);
+            const auto title = fmt::format("ARBITRARY COMPLEXITY - FPS: {}, draw calls: {}, shader "
+                                           "binds: {}, texture binds: {}",
+                fps, getRenderStats().drawCalls, stats.shaderBinds, stats.textureBinds);
             window_.setTitle(title);
             nextFps = now + 1.0f;
             fps = 0;

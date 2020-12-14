@@ -16,15 +16,15 @@ using namespace std::chrono_literals;
 using namespace std::literals;
 
 static const auto usage = R"(
-7dfps
+ARBITRARY COMPLEXITY - A video game made for 7DFPS 2020
 
 Usage:
-  7dfps
-  7dfps solo
-  7dfps connect <host> <port> [--gamecode=<gamecode>]
-  7dfps server <host> <port> [--exit-after-game] [--exit-timeout=<timeout>] [--gamecode=<gamecode>]
-  7dfps -h | --help
-  7dfps --version
+  complexity
+  complexity solo
+  complexity connect <host> <port> [--gamecode=<gamecode>]
+  complexity server <host> <port> [--exit-after-game] [--exit-timeout=<timeout>] [--gamecode=<gamecode>]
+  complexity -h | --help
+  complexity --version
 
 Options:
   -h --help                 Show this help.

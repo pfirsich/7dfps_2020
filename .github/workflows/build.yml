@@ -51,16 +51,18 @@ jobs:
     - name: Assemble Artifact Directory
       shell: bash
       run: |
-        mkdir artifact-out
-        cp ./build/Release/7dfps.exe artifact-out/
-        cp ./build/Release/*.dll artifact-out/
-        mkdir artifact-out/media
-        cp media/*.glb artifact-out/media
-        cp -R media/sounds artifact-out/media/sounds
-        cp -R media/systems artifact-out/media/systems
-        cp -R media/skybox artifact-out/media/skybox
+        mkdir -p "artifact-out/ARBITRARY COMPLEXITY"
+        cd "artifact-out/ARBITRARY COMPLEXITY"
+        cp ../../build/Release/complexity.exe .
+        cp ../../build/Release/*.dll .
+        mkdir media
+        cp ../../media/*.glb media/
+        cp ../../media/*.ttf media/
+        cp -R ../../media/sounds media/sounds
+        cp -R ../../media/systems media/systems
+        cp -R ../../media/skybox media/skybox
     - name: Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: 7dfps-win64
+        name: ARBITRARY_COMPLEXITY-win64
         path: artifact-out
