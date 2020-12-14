@@ -49,7 +49,7 @@ struct Config {
         if (data["msaa"] != nullptr)
             props.msaaSamples = data["msaa"];
         if (data["fullscreen"] != nullptr)
-            props.fullscreenDesktop = data["fullscreen"];
+            props.fullscreen = data["fullscreen"];
     }
 };
 
