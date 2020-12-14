@@ -101,7 +101,7 @@ async function submit(event) {
 
   document.getElementById("screenDone").innerHTML = `
     <h2>Game Code: </h2>
-    <input type="text" id="inputHost" readonly value="${json.host}:${json.port}:${json.gameCode}" style="width: 280px;">  <button type="button" id="copy">Copy</button>
+    <input type="text" id="inputHost" readonly value="${json.host}:${json.port}:${json.gameCode}" style="width: 380px;">  <button type="button" id="copy">Copy</button>
 
     <br><br>
     Share this code to play together.

@@ -12,10 +12,10 @@
     <style media="screen">
       body {
         font-family: "PT Mono", monospace;
-        background: #131212;
-        color: #91ff40;
+        background: #191819;
+        color: #f1f0e4;
         font-size: 18px;
-        text-shadow: 0 0 4px #b6ff81;
+        text-shadow: 0 0 4px #fff;
         text-align: center;
       }
 
@@ -25,27 +25,34 @@
         max-width: 500px;
         padding: 64px;
         text-align: left;
-        border: 2px #91ff40 solid;
-        box-shadow: 0 0 4px 0 #b6ff81;
+        border: 2px #f1f0e4 solid;
+        box-shadow: 0 0 4px 0 #fff;
       }
 
       button,
       select,
-      input {
+      input,
+      a {
         background: none;
-        border: 2px #91ff40 solid;
-        box-shadow: 0 0 4px 0 #b6ff81;
+        border: 2px #f1f0e4 solid;
+        box-shadow: 0 0 4px 0 #fff;
         color: inherit;
         padding: 10px;
         cursor: pointer;
         font-family: inherit;
         text-shadow: inherit;
         font-size: inherit;
+        text-decoration: none;
       }
 
       :focus {
         border-color: #fff;
         outline: 0;
+      }
+
+      h3,
+      h2 {
+        margin-top: 0;
       }
     </style>
   </head>
@@ -54,14 +61,28 @@
     <br />
 
     <h1>ARBITRARY COMPLEXITY</h1>
-    <h3>Morel</h3>
+    <h3>morel</h3>
 
+    <br />
+
+    <div class="download">
+      <a target="_blank" href="https://pfirsich.itch.io/arbitrary-complexity"
+        >Download Game</a
+      >
+    </div>
+
+    <br />
+    <br />
+    - then -
+    <br />
     <br />
     <br />
 
     <div id="screenWait"><br /><br />Loading, please wait...</div>
 
     <div id="screenForm" style="display: none">
+      <h3>Create Game:</h3>
+      <br />
       <form id="form" action="/games" method="post">
         <label>
           Region:
