@@ -67,8 +67,7 @@ int main(int argc, char** argv)
 
     const auto args
         = docopt::docopt(usage, { argv + 1, argv + argc }, true, std::to_string(version));
-    for (auto const& arg : args)
-        std::cout << arg.first << ": " << arg.second << std::endl;
+    // for (auto const& arg : args) std::cout << arg.first << ": " << arg.second << std::endl;
 
     if (args.at("solo").asBool()) {
         Server server;
