@@ -14,6 +14,12 @@ local state = {
 
 logs("")
 
+log("", logLevel.INFO, "Fuling complete")
+log("", logLevel.INFO, "Ship detached from omega station")
+log("", logLevel.INFO, "All systems in stand by")
+log("", logLevel.INFO, "System status check complete: systems nominal")
+log("", logLevel.INFO, "Current destiation: Veros ")
+
 -- update
 tick(1.0, function()
     if state.name == 'booting' then
@@ -25,6 +31,10 @@ tick(1.0, function()
             state = {
                 name = "running"
             }
+            log("", logLevel.INFO, "Ship overview:")
+            log("", logLevel.INFO, "* Engine: off")
+            log("", logLevel.INFO, "* Reactor: off")
+            log("", logLevel.INFO, "* Shields: off")
             return
         end
     end
@@ -45,6 +55,7 @@ command("boot", "", {}, function()
     log("", logLevel.INFO, "Booting navigation systems..")
 
     terminalOutput("Boot initiated")
+    terminalOutput("Check logs to see progress")
 
     state = {
         name = "booting",

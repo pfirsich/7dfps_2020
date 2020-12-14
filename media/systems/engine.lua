@@ -100,6 +100,7 @@ command("boot", "", {}, function()
     log("", logLevel.INFO, "Booting engine..")
 
     terminalOutput("Boot initiated")
+    terminalOutput("Check logs to see progress")
 
     state = {
         name = "booting",
