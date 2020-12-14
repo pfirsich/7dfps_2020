@@ -59,7 +59,7 @@ uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
         "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\:\\d{1,5}\\:[0-9A-F]{6}$");
     SDL_SetRelativeMouseMode(SDL_FALSE);
     bool menuRunning = true;
-    uint32_t gameCode;
+    uint32_t retGameCode = 0;
     while (menuRunning) {
         SDL_Event event;
         while (SDL_PollEvent(&event) != 0) {
@@ -73,7 +73,7 @@ uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        drawImgui(window_.getSdlWindow(), [this, &hostPort, &menuRunning, &gameCode]() {
+        drawImgui(window_.getSdlWindow(), [this, &hostPort, &menuRunning, &retGameCode]() {
             static std::string connectCode;
 
             const auto size = window_.getSize();
@@ -100,12 +100,13 @@ uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
                 const auto secondColon = connectCode.find(':', firstColon + 1);
                 assert(firstColon != std::string::npos && secondColon != std::string::npos);
                 const auto host = connectCode.substr(0, firstColon);
-                const auto port = parseInt<Port>(
-                    connectCode.substr(firstColon + 1, secondColon - firstColon - 1));
-                const auto gameCode_ = parseInt<uint32_t>(connectCode.substr(secondColon + 1), 16);
+                const auto portStr = connectCode.substr(firstColon + 1, secondColon - firstColon - 1);
+                const auto port = parseInt<Port>(portStr);
+                const auto gameCodeStr = connectCode.substr(secondColon + 1);
+                const auto gameCode = parseInt<uint32_t>(gameCodeStr, 16);
                 if (port && gameCode) {
                     hostPort = HostPort { host, *port };
-                    gameCode = *gameCode_;
+                    retGameCode = *gameCode;
                     menuRunning = false;
                 }
             }
@@ -136,7 +137,7 @@ uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
         window_.swap();
     }
     SDL_SetRelativeMouseMode(SDL_TRUE);
-    return gameCode;
+    return retGameCode;
 }
 
 void Client::showError(const std::string& message)
