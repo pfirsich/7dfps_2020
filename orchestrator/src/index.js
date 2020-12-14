@@ -33,7 +33,7 @@ app.post("/games", async (req, res) => {
   }
 
   const { region } = req.body;
-  const version = req.body.version || "stable";
+  const version = req.body.version || "latest";
 
   if (!region) {
     res.status(400).json({ msg: "Invalid JSON" });

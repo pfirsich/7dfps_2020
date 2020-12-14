@@ -5,7 +5,7 @@ module.exports = {
 
   maxGamesOnVm: 10,
 
-  gameCodeSize: (2 ** 24) - 1,
+  gameCodeSize: 2 ** 24 - 1,
 
   // sshUser: "morel",
   sshUser: "root",
@@ -14,7 +14,7 @@ module.exports = {
   // vmImage: "centos-8-x64",
   // vmImage: "ubuntu-16-04-x32",
 
-  vmImage: "75019393", // 7dfps-vm-1607740173248
+  vmImage: "75132277", // 7dfps-vm-1607914059830
 
   vmSshKeys: [
     // Dev
