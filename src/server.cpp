@@ -183,13 +183,14 @@ PlayerId Server::getPlayerId(const void* peerData) const
 
 void Server::findSpawnPosition(Player& player)
 {
+    static constexpr auto spawnPoint = glm::vec3(-5.0f, 10.0f, -17.5f);
     static constexpr float spawnRange = 4.0f;
     static constexpr std::array spawnPoints {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(spawnRange, 0.0f, spawnRange),
-        glm::vec3(-spawnRange, 0.0f, spawnRange),
-        glm::vec3(-spawnRange, 0.0f, -spawnRange),
-        glm::vec3(spawnRange, 0.0f, -spawnRange),
+        spawnPoint + glm::vec3(0.0f, 0.0f, 0.0f),
+        spawnPoint + glm::vec3(spawnRange, 0.0f, spawnRange),
+        spawnPoint + glm::vec3(-spawnRange, 0.0f, spawnRange),
+        spawnPoint + glm::vec3(-spawnRange, 0.0f, -spawnRange),
+        spawnPoint + glm::vec3(spawnRange, 0.0f, -spawnRange),
     };
     auto& trafo = player.entity.get<comp::Transform>();
     const auto& collider = player.entity.get<comp::CylinderCollider>();
