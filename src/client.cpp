@@ -351,9 +351,10 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         fps++;
         if (nextFps < now) {
             const auto stats = glw::State::instance().getStatistics();
-            const auto title = fmt::format("ARBITRARY COMPLEXITY - FPS: {}, draw calls: {}, shader "
-                                           "binds: {}, texture binds: {}",
-                fps, getRenderStats().drawCalls, stats.shaderBinds, stats.textureBinds);
+            const auto title = fmt::format(
+                "ARBITRARY COMPLEXITY v{} - FPS: {}, draw calls: {}, shader "
+                "binds: {}, texture binds: {}",
+                version, fps, getRenderStats().drawCalls, stats.shaderBinds, stats.textureBinds);
             window_.setTitle(title);
             nextFps = now + 1.0f;
             fps = 0;
