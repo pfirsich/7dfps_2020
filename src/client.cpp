@@ -240,8 +240,8 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         return false;
     }
 
-    static constexpr std::array playerMeshNames = { "SK_Character_Alien_Male_01.001",
-        "SK_Character_Hacker_Female_01.001", "SK_Character_Muscle_Male_01.001", "robot_mesh.001" };
+    static constexpr std::array playerMeshNames
+        = { "alien_mesh.001", "hacker_mesh.001", "muscle_mesh.001", "robot_mesh.001" };
     for (const auto& name : playerMeshNames) {
         auto mesh = playerGltf->getMesh(name);
         if (!mesh) {
