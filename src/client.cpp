@@ -100,7 +100,8 @@ uint32_t Client::showConnectCodeMenu(std::optional<HostPort>& hostPort)
                 const auto secondColon = connectCode.find(':', firstColon + 1);
                 assert(firstColon != std::string::npos && secondColon != std::string::npos);
                 const auto host = connectCode.substr(0, firstColon);
-                const auto portStr = connectCode.substr(firstColon + 1, secondColon - firstColon - 1);
+                const auto portStr
+                    = connectCode.substr(firstColon + 1, secondColon - firstColon - 1);
                 const auto port = parseInt<Port>(portStr);
                 const auto gameCodeStr = connectCode.substr(secondColon + 1);
                 const auto gameCode = parseInt<uint32_t>(gameCodeStr, 16);
@@ -399,6 +400,7 @@ void Client::processSdlEvents()
             if (std::holds_alternative<TerminalState>(state_)) {
                 playEntitySound("terminalType", std::get<TerminalState>(state_).terminalEntity);
             }
+            break;
         case SDL_KEYDOWN:
             switch (event.key.keysym.scancode) {
             case SDL_SCANCODE_RETURN:
