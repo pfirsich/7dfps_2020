@@ -73,22 +73,31 @@ async function submit(event) {
       `;
   };
 
-  const interval = setInterval(update, 431);
   update();
 
   document.getElementById("screenWait").style.display = "block";
   document.getElementById("screenForm").style.display = "none";
   document.getElementById("screenDone").style.display = "none";
 
+  let body;
+  if (event.target.version) {
+    body = JSON.stringify({
+      version: event.target.version && event.target.version.value,
+      region: event.target.region.value,
+    });
+  } else {
+    body = JSON.stringify({
+      region: event.target.region.value,
+    });
+  }
+
+  const interval = setInterval(update, 431);
   const response = await fetch("/games", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      version: event.target.version.value,
-      region: event.target.region.value,
-    }),
+    body,
   });
 
   clearInterval(interval);
