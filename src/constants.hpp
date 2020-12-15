@@ -14,3 +14,4 @@ static constexpr size_t maxTerminalOutputSize = 16 * 1024;
 static constexpr size_t terminalTruncateAmount = 2 * 1024;
 static constexpr float scrollAmount = 80.0f;
 static constexpr float pageScrollAmount = 3.0f * scrollAmount;
+static constexpr size_t maxHistoryEntries = 64;

@@ -395,6 +395,21 @@ void Client::scrollTerminal(float amount)
     termData.scroll = std::clamp(termData.scroll + amount, 0.0f, termData.lastMaxScroll);
 }
 
+void Client::terminalHistory(int offset)
+{
+    fmt::print("history: {}\n", offset);
+    auto& ts = std::get<TerminalState>(state_);
+    auto& termData = terminalData_[ts.systemName];
+    ts.currentHistoryIndex
+        = std::clamp<int>(ts.currentHistoryIndex + offset, 0, termData.history.size());
+    assert(ts.currentHistoryIndex >= 0);
+    fmt::print("selected: {}\n", ts.currentHistoryIndex);
+    if (ts.currentHistoryIndex == 0)
+        ts.terminalInput = "";
+    else
+        ts.terminalInput = termData.history[ts.currentHistoryIndex - 1];
+}
+
 void Client::processSdlEvents()
 {
     static SDL_Event event;
@@ -415,31 +430,35 @@ void Client::processSdlEvents()
             }
             break;
         case SDL_KEYDOWN:
-            switch (event.key.keysym.scancode) {
-            case SDL_SCANCODE_PAGEUP:
-                if (std::holds_alternative<TerminalState>(state_)) {
+            if (auto terminalState = std::get_if<TerminalState>(&state_)) {
+                switch (event.key.keysym.scancode) {
+                case SDL_SCANCODE_UP:
+                    terminalHistory(1);
+                    break;
+                case SDL_SCANCODE_DOWN:
+                    terminalHistory(-1);
+                    break;
+                case SDL_SCANCODE_PAGEUP:
                     scrollTerminal(-pageScrollAmount);
-                }
-                break;
-            case SDL_SCANCODE_PAGEDOWN:
-                if (std::holds_alternative<TerminalState>(state_)) {
+                    break;
+                case SDL_SCANCODE_PAGEDOWN:
                     scrollTerminal(pageScrollAmount);
-                }
-                break;
-            case SDL_SCANCODE_RETURN:
-                if (auto terminalState = std::get_if<TerminalState>(&state_)) {
+                    break;
+                case SDL_SCANCODE_RETURN:
                     send(Channel::Reliable,
                         Message<MessageType::ClientExecuteCommand> {
                             terminalState->terminalInput });
                     terminalState->terminalInput = "";
                     playEntitySound("terminalExecute", terminalState->terminalEntity);
-                }
-                break;
-            case SDL_SCANCODE_ESCAPE:
-                if (std::holds_alternative<TerminalState>(state_)) {
+                    break;
+                case SDL_SCANCODE_ESCAPE:
                     stopTerminalInteraction();
+                    break;
+                default:
+                    break;
                 }
-                break;
+            }
+            switch (event.key.keysym.scancode) {
             case SDL_SCANCODE_S:
                 if (event.key.keysym.mod & KMOD_CTRL) {
                     const auto mode = SDL_GetRelativeMouseMode() == SDL_TRUE ? SDL_FALSE : SDL_TRUE;
@@ -638,6 +657,7 @@ void Client::receive(const enet::Packet& packet)
         MESSAGE_CASE(ServerPlayerStateUpdate);
         MESSAGE_CASE(ServerInteractTerminal);
         MESSAGE_CASE(ServerUpdateTerminalOutput);
+        MESSAGE_CASE(ServerAddTerminalHistory);
     default:
         fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
     }
@@ -742,6 +762,16 @@ void Client::processMessage(
     }
 }
 
+void Client::processMessage(
+    uint32_t /*frameNumber*/, const Message<MessageType::ServerAddTerminalHistory>& message)
+{
+    auto& termData = terminalData_[message.terminal];
+    fmt::print("add history entry: {}\n", message.command);
+    termData.history.push_front(message.command);
+    while (termData.history.size() > maxHistoryEntries)
+        termData.history.pop_back();
+}
+
 void Client::draw()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -784,11 +814,17 @@ void Client::draw()
             termData.lastMaxScroll = ImGui::GetScrollMaxY();
             ImGui::EndChild();
             ImGui::PushItemWidth(-1);
-            bool focus = false;
-            if (ImGui::InputText("Execute", &terminalState.terminalInput,
-                    ImGuiInputTextFlags_EnterReturnsTrue)) {
-                terminalState.terminalInput = "";
+            // https://github.com/ocornut/imgui/issues/455
+            // This cost some time. the InputText keeps focus the whole time it's visible, so it
+            // gets to own inputText.
+            static std::string inputText;
+            ImGuiInputTextFlags flags = 0;
+            if (inputText != terminalState.terminalInput) { // I probably changed it
+                inputText = terminalState.terminalInput;
+                flags = ImGuiInputTextFlags_ReadOnly;
             }
+            ImGui::InputText("Execute", &inputText, flags);
+            terminalState.terminalInput = inputText;
             ImGui::SetKeyboardFocusHere(-1);
             ImGui::PopItemWidth();
             ImGui::End();

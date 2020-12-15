@@ -9,7 +9,6 @@
 #include "version.hpp"
 
 static constexpr size_t maxPlayers = 4;
-static constexpr uint32_t protocolVersion = 1;
 static constexpr size_t tickRate = 60;
 
 using PlayerId = uint32_t;
@@ -49,6 +48,7 @@ enum class MessageType : uint8_t {
     ClientUpdateTerminalInput,
     ClientExecuteCommand,
     ServerUpdateTerminalOutput,
+    ServerAddTerminalHistory,
 };
 
 std::string asString(MessageType messageType);
@@ -160,6 +160,19 @@ struct Message<MessageType::ServerUpdateTerminalOutput> {
     {
         FIELD(terminal);
         FIELD(text);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ServerAddTerminalHistory> {
+    std::string terminal;
+    std::string command;
+
+    SERIALIZE()
+    {
+        FIELD(terminal);
+        FIELD(command);
         SERIALIZE_END;
     }
 };

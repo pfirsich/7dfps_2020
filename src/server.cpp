@@ -327,5 +327,8 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
             player.id);
         return;
     }
+    if (!message.command.empty())
+        broadcast(Channel::Reliable,
+            Message<MessageType::ServerAddTerminalHistory> { *system, message.command });
     shipSystems_.at(*system).system->executeCommand(message.command);
 }

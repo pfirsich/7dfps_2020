@@ -27,11 +27,13 @@ private:
         std::string systemName;
         std::string terminalInput;
         glm::vec3 startPos; // this sucks
+        int currentHistoryIndex = 0;
     };
 
     using PlayerState = std::variant<MoveState, TerminalState>;
 
     struct TerminalData {
+        std::deque<std::string> history;
         std::string input;
         std::string output;
         float scroll = 0.0f;
@@ -72,6 +74,7 @@ private:
 
     void stopTerminalInteraction();
     void scrollTerminal(float amount);
+    void terminalHistory(int offset);
 
     ecs::EntityHandle findTerminal(const std::string& system);
 
@@ -82,6 +85,8 @@ private:
         uint32_t frameNumber, const Message<MessageType::ServerInteractTerminal>& message);
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerUpdateTerminalOutput>& message);
+    void processMessage(
+        uint32_t frameNumber, const Message<MessageType::ServerAddTerminalHistory>& message);
 
     SoLoud::handle playEntitySound(const std::string& name, const std::string entityName,
         float volume = 1.0f, float playbackSpeed = 1.0f);
