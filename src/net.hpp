@@ -49,6 +49,7 @@ enum class MessageType : uint8_t {
     ClientExecuteCommand,
     ServerUpdateTerminalOutput,
     ServerAddTerminalHistory,
+    ClientPlaySound,
 };
 
 std::string asString(MessageType messageType);
@@ -173,6 +174,19 @@ struct Message<MessageType::ServerAddTerminalHistory> {
     {
         FIELD(terminal);
         FIELD(command);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ClientPlaySound> {
+    std::string name;
+    glm::vec3 position;
+
+    SERIALIZE()
+    {
+        FIELD(name);
+        FIELD(position);
         SERIALIZE_END;
     }
 };

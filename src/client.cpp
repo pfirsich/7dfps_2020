@@ -397,13 +397,11 @@ void Client::scrollTerminal(float amount)
 
 void Client::terminalHistory(int offset)
 {
-    fmt::print("history: {}\n", offset);
     auto& ts = std::get<TerminalState>(state_);
     auto& termData = terminalData_[ts.systemName];
     ts.currentHistoryIndex
         = std::clamp<int>(ts.currentHistoryIndex + offset, 0, termData.history.size());
     assert(ts.currentHistoryIndex >= 0);
-    fmt::print("selected: {}\n", ts.currentHistoryIndex);
     if (ts.currentHistoryIndex == 0)
         ts.terminalInput = "";
     else
@@ -538,11 +536,17 @@ void Client::handleInteractions()
                         trafo.move(dir * 0.05f);
                     }
 
-                    const auto delta = ladder->dir == comp::Ladder::Dir::Up ? 1.0f : -1.0f;
-                    trafo.setPosition(
-                        trafo.getPosition() + glm::vec3(0.0f, delta * floorHeight, 0.0f));
+                    const auto deltaY = ladder->dir == comp::Ladder::Dir::Up ? 1.0f : -1.0f;
+                    const auto delta = glm::vec3(0.0f, deltaY * floorHeight, 0.0f);
+                    const auto startPos = trafo.getPosition();
+                    const auto targetPos = trafo.getPosition() + delta;
+                    trafo.setPosition(targetPos);
 
-                    playSound("ladderInteract");
+                    // Play sound in the middle of the ladder, so you can hear them equally well
+                    // leaving or coming
+                    const auto soundPos = (startPos + targetPos) * 0.5f;
+                    playNetSound("ladderInteract", soundPos);
+                    play3dSound("ladderInteract", soundPos);
                 }
             }
         }
@@ -575,6 +579,11 @@ SoLoud::handle Client::playEntitySound(
     return 0;
 }
 
+void Client::playNetSound(const std::string& name, const glm::vec3& position)
+{
+    send(Channel::Reliable, Message<MessageType::ClientPlaySound> { name, position });
+}
+
 void Client::update(float dt)
 {
     InputManager::instance().update();
@@ -583,6 +592,17 @@ void Client::update(float dt)
         playerControlSystem(world_, dt);
         integrationSystem(world_, dt);
         handleInteractions();
+
+        const auto& trafo = player_.get<comp::Transform>();
+        auto& velocity = player_.get<comp::Velocity>().value;
+        if (glm::length(velocity) > 0.1f) {
+            if (nextStepSound_ < time_) {
+                playNetSound("step", trafo.getPosition());
+                nextStepSound_ = time_ + 0.35f;
+            }
+        } else {
+            nextStepSound_ = 0.0f;
+        }
 
         // Negative velocity, because otherwise the doppler effect will be the wrong way around
         // :)
@@ -658,6 +678,7 @@ void Client::receive(const enet::Packet& packet)
         MESSAGE_CASE(ServerInteractTerminal);
         MESSAGE_CASE(ServerUpdateTerminalOutput);
         MESSAGE_CASE(ServerAddTerminalHistory);
+        MESSAGE_CASE(ClientPlaySound);
     default:
         fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
     }
@@ -766,10 +787,15 @@ void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerAddTerminalHistory>& message)
 {
     auto& termData = terminalData_[message.terminal];
-    fmt::print("add history entry: {}\n", message.command);
     termData.history.push_front(message.command);
     while (termData.history.size() > maxHistoryEntries)
         termData.history.pop_back();
+}
+
+void Client::processMessage(
+    uint32_t /*frameNumber*/, const Message<MessageType::ClientPlaySound>& message)
+{
+    play3dSound(message.name, message.position);
 }
 
 void Client::draw()

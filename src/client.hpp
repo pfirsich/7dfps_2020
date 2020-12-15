@@ -87,11 +87,13 @@ private:
         uint32_t frameNumber, const Message<MessageType::ServerUpdateTerminalOutput>& message);
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerAddTerminalHistory>& message);
+    void processMessage(uint32_t frameNumber, const Message<MessageType::ClientPlaySound>& message);
 
     SoLoud::handle playEntitySound(const std::string& name, const std::string entityName,
         float volume = 1.0f, float playbackSpeed = 1.0f);
     SoLoud::handle playEntitySound(const std::string& name, ecs::EntityHandle entity,
         float volume = 1.0f, float playbackSpeed = 1.0f);
+    void playNetSound(const std::string& name, const glm::vec3& position);
 
     ENetPeer* serverPeer_ = nullptr;
     enet::Host host_;
@@ -99,6 +101,7 @@ private:
     ecs::World world_;
     Frustum frustum_;
     PlayerState state_;
+    float nextStepSound_ = 0.0f;
     std::unordered_map<PlayerId, ecs::EntityHandle> players_; // excludes self
     std::unordered_map<ShipSystem::Name, TerminalData> terminalData_;
     std::vector<std::shared_ptr<Mesh>> playerMeshes_;

@@ -7,5 +7,6 @@ return {
     terminalOutput = "AlienScroll.wav",
     engineIdle = "engine.ogg",
     reactorZap = {file = "reactor.wav", halfDistance = 10.0, volume = 0.2},
-    ladderInteract = "ladder.wav",
+    ladderInteract = {file = "ladder.wav", halfDistance = 15.0},
+    step = {file = "step.wav", halfDistance = 15.0},
 }

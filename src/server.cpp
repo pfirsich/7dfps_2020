@@ -257,6 +257,7 @@ void Server::receive(PlayerId id, const enet::Packet& packet)
         MESSAGE_CASE(ClientInteractTerminal);
         MESSAGE_CASE(ClientUpdateTerminalInput);
         MESSAGE_CASE(ClientExecuteCommand);
+        MESSAGE_CASE(ClientPlaySound);
     default:
         fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
     }
@@ -331,4 +332,10 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
         broadcast(Channel::Reliable,
             Message<MessageType::ServerAddTerminalHistory> { *system, message.command });
     shipSystems_.at(*system).system->executeCommand(message.command);
+}
+
+void Server::processMessage(
+    Player& player, uint32_t /*frameNumber*/, const Message<MessageType::ClientPlaySound>& message)
+{
+    distribute(player, Channel::Reliable, message);
 }

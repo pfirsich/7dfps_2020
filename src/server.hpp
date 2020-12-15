@@ -51,6 +51,19 @@ private:
         return sendMessage(player.peer, channel, frameCounter_, message);
     }
 
+    // Sends to everyone, but the passed player
+    template <MessageType MsgType>
+    bool distribute(Player& player, Channel channel, const Message<MsgType>& message)
+    {
+        bool ret = true;
+        for (auto& other : players_) {
+            if (other.id != player.id) {
+                ret = send(other, channel, message) && ret;
+            }
+        }
+        return ret;
+    }
+
     void processEnetEvents();
     void tick(float dt);
     void broadcastUpdate();
@@ -85,6 +98,9 @@ private:
 
     void processMessage(Player& player, uint32_t frameNumber,
         const Message<MessageType::ClientExecuteCommand>& message);
+
+    void processMessage(
+        Player& player, uint32_t frameNumber, const Message<MessageType::ClientPlaySound>& message);
 
     enet::Host host_;
     ecs::World world_;
