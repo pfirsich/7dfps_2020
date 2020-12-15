@@ -32,6 +32,8 @@ tick(1.0, function()
             log("", logLevel.INFO, ("Boot Progress: %d%%"):format(state.progress * 100))
         else
             log("", logLevel.INFO, "Engine booted")
+            throttle = 0.2
+            log("", logLevel.INFO, ("Throttle set to: %d%%"):format(throttle * 100))
             state = {
                 name = "running"
             }
@@ -51,11 +53,15 @@ tick(1.0, function()
 
         local powerUsage = lerp(powerUsageMin, powerUsageMax, throttle);
         send("reactor", "requestEnergy", powerUsage)
+        log("", logLevel.INFO, ("Request power: %f %f"):format(powerBalance, powerUsage))
         powerBalance = powerBalance - powerUsage
 
-        if powerBalance < powerUsage * 2 then
+        if powerBalance < powerUsage * 4 then
+            log("", logLevel.WARNING, "Power critically low")
+        elseif powerBalance < powerUsage * 2 then
             log("", logLevel.WARNING, "Low power")
         end
+
         -- after a couple seconds
         if powerBalance < powerUsage * 6 then
             log("", logLevel.ERROR, "Engine shutdown")
@@ -115,13 +121,13 @@ command("throttle", "set", {"PERCENTAGE"}, function(percentage)
         return
     end
 
-    log("", logLevel.INFO, ("Throttle level set to: %d%%"):format(percentage * 100))
+    log("", logLevel.INFO, ("Throttle set to: %d%%"):format(percentage * 100))
     throttle = percentage
 end)
 
 command("throttle", "show", {}, function()
     terminalOutput(("Throttle level: %d%%"):format(throttle * 100))
-    log("", logLevel.INO, "Throttle level progress queried by user root")
+    log("", logLevel.INO, "Throttle progress queried by user root")
 end)
 
 command("throttle", "override", {"FLOAT"}, function(percentage)
@@ -135,16 +141,32 @@ command("throttle", "override", {"FLOAT"}, function(percentage)
         log("", logLevel.WARNING, ("Failed attempt to set throttle to: %d%%"):format(percentage * 100))
     end
 
-    log("", logLevel.INFO, ("Throttle level set to: %d%%"):format(percentage * 100))
+    log("", logLevel.INFO, ("Throttle set to: %d%%"):format(percentage * 100))
     throttle = percentage
 end)
 
 subscribe("provideEnergy", function(sender, amount)
+    log("", logLevel.INFO, ("%s provided %f KW/S"):format(sender, amount))
     powerBalance = powerBalance + amount
 end)
 
+subscribe("healthCheck", function(sender)
+    log("", logLevel.INFO, ("Health check triggered by '%s'"):format(sender))
+
+    if state.name == 'running' and throttle > 0.2 then
+        log("", logLevel.INFO, "Health check successful")
+        send(sender, "systemStatus", "ok")
+    else
+        log("", logLevel.INFO, "Health check failed")
+        send(sender, "systemStatus", "err")
+    end
+end)
+
+-- joel: add details
 manual("engine", [[
 The engine is the hyperdrive of your ship and allows jumping to other systems.
+
+For the engine health check to succeed the engine must be online and the throttle not below 20%.
 ]])
 
 -- joel: details

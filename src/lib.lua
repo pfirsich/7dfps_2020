@@ -4,6 +4,9 @@ function symrand()
 end
 
 function jitter(val, rel, abs)
+    if abs == nil then
+        abs = 0
+    end
     return val + symrand() * rel * val + symrand() * abs
 end
 

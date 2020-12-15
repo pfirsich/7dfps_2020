@@ -22,23 +22,39 @@ log("", logLevel.INFO, "Ship detached from omega station")
 log("", logLevel.INFO, "All systems in stand by")
 log("", logLevel.INFO, "System status check complete: systems nominal")
 log("", logLevel.INFO, "Current destiation: Veros ")
-log("", logLevel.INFO, "Jump not ready: Navigation offline")
+log("", logLevel.INFO, "Jump not ready: Navigation computer offline")
 
 -- update
-tick(2.0, function()
+tick(1, function()
     if state.name == 'booting' then
-        state.progress = state.progress + 0.15
+        state.progress = state.progress + jitter(0.14, 1);
         if state.progress < 1 then
             log("", logLevel.INFO, ("Boot Progress: %d%%"):format(state.progress * 100))
         else
-            log("", logLevel.INFO, "Nav booted")
+            log("", logLevel.INFO, "Navigation computer booted")
             state = {
                 name = "running"
             }
-            log("", logLevel.INFO, "Ship overview:")
-            log("", logLevel.INFO, "* Engine: off")
-            log("", logLevel.INFO, "* Reactor: off")
-            log("", logLevel.INFO, "* Shields: off")
+            return
+        end
+    elseif state.name == 'jumpSequence' then
+        if state.engineStatus == 'unknown' then
+            log("", logLevel.INFO, "Asserting engine operationality")
+            send("engine", "healthCheck");
+            state.engineStatus = "waiting"
+            return;
+        elseif state.reactorStatus == 'unknown' then
+            log("", logLevel.INFO, "Asserting reactor operationality")
+            send("reactor", "healthCheck");
+            state.reactorStatus = "waiting"
+            return
+        end
+
+        if state.engineStatus == 'err' or state.reactorStatus == 'err' then
+            log("", logLevel.ERROR, "Jump aborted: one or more health checks failed")
+            state = {
+                name = "running"
+            }
             return
         end
     end
@@ -47,7 +63,7 @@ end)
 command("boot", "", {}, function()
     if state.name == "booting" then
         terminalOutput(("Boot progress: %d%%"):format(state.progress * 100))
-        log("", logLevel.INFO, "Nav boot progress queried by user root")
+        log("", logLevel.INFO, "Boot progress queried by user root")
         return
     end
 
@@ -59,7 +75,7 @@ command("boot", "", {}, function()
     log("", logLevel.INFO, "Booting navigation systems..")
 
     terminalOutput("Boot initiated")
-    terminalOutput("Check log to see progress")
+    terminalOutput("Check 'log' to see progress")
 
     state = {
         name = "booting",
@@ -69,16 +85,39 @@ end)
 
 command("jump", "", {}, function()
     if state.name ~= "running" then
-        terminalOutput("Can not jump. Navigation offline.")
-        log("", logLevel.WARNING, "Jump failed")
+        terminalOutput("Jump not ready: Navigation computer offline")
+        log("", logLevel.WARNING, "Jump failed: Navigation computer offline")
         return
     end
+
     if state.name == "running" then
-        -- TODO: get actual system status
-        log("", logLevel.INFO, "Ship overview:")
-        log("", logLevel.INFO, "* Engine: off")
-        log("", logLevel.INFO, "* Shields: off")
+        terminalOutput("Jump sequence initiated")
+        terminalOutput("Check 'log' to see progress")
+        log("", logLevel.INFO, "Starting jump sequence..")
+        state = {
+            name = "jumpSequence",
+            engineStatus = 'unknown',
+            reactorStatus = 'unknown',
+        }
         return
+    end
+end)
+
+subscribe("systemStatus", function(sender, value)
+    log("", logLevel.INFO, ("Received health check result from %s"):format(sender))
+
+    if value == "ok" then
+        log("", logLevel.INFO, "Health check successful")
+    else
+        log("", logLevel.WARNING, "Health check failed")
+    end
+
+    if state.name == "jumpSequence" then
+        if sender == "engine" then
+            state.engineStatus = value
+        elseif sender == "reactor" then
+            state.reactorStatus = value
+        end
     end
 end)
 
