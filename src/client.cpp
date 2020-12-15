@@ -387,6 +387,14 @@ void Client::stopTerminalInteraction()
     send(Channel::Reliable, Message<MessageType::ClientInteractTerminal> { "" });
 }
 
+void Client::scrollTerminal(float amount)
+{
+    auto& termData = terminalData_[std::get<TerminalState>(state_).systemName];
+    if (termData.scroll == HUGE_VALF)
+        termData.scroll = termData.lastMaxScroll;
+    termData.scroll = std::clamp(termData.scroll + amount, 0.0f, termData.lastMaxScroll);
+}
+
 void Client::processSdlEvents()
 {
     static SDL_Event event;
@@ -397,12 +405,27 @@ void Client::processSdlEvents()
             running_ = false;
             break;
         case SDL_TEXTINPUT:
-            if (std::holds_alternative<TerminalState>(state_)) {
-                playEntitySound("terminalType", std::get<TerminalState>(state_).terminalEntity);
+            if (auto terminalState = std::get_if<TerminalState>(&state_)) {
+                playEntitySound("terminalType", terminalState->terminalEntity);
+            }
+            break;
+        case SDL_MOUSEWHEEL:
+            if (event.wheel.y != 0 && std::holds_alternative<TerminalState>(state_)) {
+                scrollTerminal(-sign(event.wheel.y) * scrollAmount);
             }
             break;
         case SDL_KEYDOWN:
             switch (event.key.keysym.scancode) {
+            case SDL_SCANCODE_PAGEUP:
+                if (std::holds_alternative<TerminalState>(state_)) {
+                    scrollTerminal(-pageScrollAmount);
+                }
+                break;
+            case SDL_SCANCODE_PAGEDOWN:
+                if (std::holds_alternative<TerminalState>(state_)) {
+                    scrollTerminal(pageScrollAmount);
+                }
+                break;
             case SDL_SCANCODE_RETURN:
                 if (auto terminalState = std::get_if<TerminalState>(&state_)) {
                     send(Channel::Reliable,
@@ -710,7 +733,9 @@ void Client::processMessage(
 void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerUpdateTerminalOutput>& message)
 {
-    terminalData_[message.terminal].output.append(message.text);
+    auto& termData = terminalData_[message.terminal];
+    termData.output.append(message.text);
+    termData.scroll = HUGE_VALF; // scroll to end
     if (const auto terminalState = std::get_if<TerminalState>(&state_)) {
         if (terminalState->systemName == message.terminal)
             playEntitySound("terminalOutput", terminalState->terminalEntity);
@@ -742,6 +767,7 @@ void Client::draw()
             // ImGui::ShowDemoWindow();
 
             auto& terminalState = std::get<TerminalState>(state_);
+            auto& termData = terminalData_[terminalState.systemName];
 
             constexpr auto margin = 200.0f;
             const auto size = window_.getSize();
@@ -749,10 +775,13 @@ void Client::draw()
             ImGui::SetNextWindowSize(ImVec2(size.x - margin * 2.0f, size.y - margin * 2.0f));
             ImGui::Begin("Terminal", nullptr, ImGuiWindowFlags_NoDecoration);
             ImGui::BeginChild("Child",
-                ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 40));
-            ImGui::TextUnformatted(terminalData_[terminalState.systemName].output.c_str());
-            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-                ImGui::SetScrollHereY(1.0f);
+                ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 45), false,
+                ImGuiWindowFlags_NoScrollWithMouse);
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(termData.output.c_str());
+            ImGui::PopTextWrapPos();
+            ImGui::SetScrollY(std::min(termData.scroll, ImGui::GetScrollMaxY()));
+            termData.lastMaxScroll = ImGui::GetScrollMaxY();
             ImGui::EndChild();
             ImGui::PushItemWidth(-1);
             bool focus = false;

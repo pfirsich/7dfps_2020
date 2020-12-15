@@ -46,3 +46,9 @@ T safeNormalize(const T& vec)
     const auto len = glm::length(vec) + 1e-5f;
     return vec / len;
 }
+
+template <typename T>
+T sign(T val)
+{
+    return (val > T {}) - (val < T {});
+}

@@ -34,6 +34,8 @@ private:
     struct TerminalData {
         std::string input;
         std::string output;
+        float scroll = 0.0f;
+        float lastMaxScroll = 0.0f;
     };
 
     uint32_t showConnectCodeMenu(std::optional<HostPort>& hostPort);
@@ -69,6 +71,7 @@ private:
     }
 
     void stopTerminalInteraction();
+    void scrollTerminal(float amount);
 
     ecs::EntityHandle findTerminal(const std::string& system);
 
