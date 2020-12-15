@@ -170,7 +170,8 @@ async function onExitGame(gameInfo) {
     timeEnded: "NOW()",
   });
 
-  await checkVms();
+  // We do not need to check VMs here since they are only terminated some time after the game ends
+  // await checkVms();
 }
 
 async function startGame({ region, creatorIpAddress, version }) {

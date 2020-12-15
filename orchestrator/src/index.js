@@ -118,10 +118,11 @@ async function init() {
   await manager.checkTimeoutedGames();
   await manager.checkVms();
 
-  // State tick to check timeouts
+  // Start tick to check timeouts
   setInterval(async () => {
     try {
       await manager.checkTimeoutedGames();
+      await manager.checkVms();
     } catch (error) {
       console.error("Error while checking for timeouted games:", error);
     }
