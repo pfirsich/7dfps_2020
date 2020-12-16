@@ -19,12 +19,13 @@ struct NetworkPlayer {
 };
 }
 
-bool Server::run(const std::string& host, Port port, uint32_t gameCode)
+bool Server::run(const std::string& host, Port port, uint32_t gameCode, float exitTimeout)
 {
     assert(!started_);
     started_ = true;
 
     connectCode_ = getConnectCode(gameCode);
+    exitTimeout_ = exitTimeout;
 
     fmt::print("Loading map..\n");
 
@@ -113,6 +114,15 @@ void Server::tick(float /*dt*/)
                 player.lastKnownTerminalSize[name] = total;
             }
         }
+    }
+
+    if (players_.empty()) {
+        if (time_ - lastNonEmpty_ > exitTimeout_) {
+            fmt::print("Exit timeout reached\n");
+            running_.store(false);
+        }
+    } else {
+        lastNonEmpty_ = time_;
     }
 }
 

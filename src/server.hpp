@@ -13,7 +13,7 @@ public:
     Server() = default;
 
     // this blocks until you call stop
-    bool run(const std::string& host, Port port, uint32_t gameCode);
+    bool run(const std::string& host, Port port, uint32_t gameCode, float exitTimeout);
 
     bool isRunning() const;
 
@@ -109,6 +109,8 @@ private:
     float time_ = 0.0f;
     uint32_t frameCounter_ = 0;
     uint32_t connectCode_ = 0;
+    float exitTimeout_ = 0;
+    float lastNonEmpty_ = 0.0f;
     std::atomic<bool> running_ { false };
     bool started_ = false;
 };

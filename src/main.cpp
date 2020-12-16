@@ -29,8 +29,7 @@ Usage:
 Options:
   -h --help                 Show this help.
   --version                 Show version.
-  --exit-after-game         Exit the server when the game ends.
-  --exit-timeout=<timeout>  Exit the server if no players have joined in the specified time (in seconds). [default: 60]
+  --exit-timeout=<timeout>  Exit the server after there are no players on it for the specified number of seconds. [default: 900]
   --gamecode=<gamecode>     Gamecode to use.
 )"s;
 
@@ -49,12 +48,22 @@ uint32_t getGameCode(const std::map<std::string, docopt::value>& args)
     if (args.at("--gamecode")) {
         const auto gameCode = parseInt<uint32_t>(args.at("--gamecode").asString(), 16);
         if (!gameCode) {
-            fmt::print(stderr, "Gamecode must be uint32_t\n{}\n", usage);
+            fmt::print(stderr, "Gamecode must be uint32\n{}\n", usage);
             std::exit(255);
         }
         return *gameCode;
     }
     return 0;
+}
+
+float getExitTimeout(const std::map<std::string, docopt::value>& args)
+{
+    const auto timeout = parseFloat(args.at("--exit-timeout").asString());
+    if (!timeout) {
+        fmt::print(stderr, "Exit timeout must be uint32\n{}\n", usage);
+        std::exit(255);
+    }
+    return *timeout;
 }
 
 int main(int argc, char** argv)
@@ -72,8 +81,9 @@ int main(int argc, char** argv)
     if (args.at("solo").asBool()) {
         Server server;
         std::atomic<bool> serverFailed { false };
-        std::thread serverThread([&server, &serverFailed]() {
-            if (!server.run("127.0.0.1", 8192, 0))
+        float exitTimeout = getExitTimeout(args);
+        std::thread serverThread([&server, &serverFailed, exitTimeout]() {
+            if (!server.run("127.0.0.1", 8192, 0, exitTimeout))
                 serverFailed.store(true);
         });
 
@@ -111,7 +121,8 @@ int main(int argc, char** argv)
         return res ? 0 : 1;
     } else if (args.at("server").asBool()) {
         Server server;
-        const auto res = server.run(args.at("<host>").asString(), getPort(args), getGameCode(args));
+        const auto res = server.run(
+            args.at("<host>").asString(), getPort(args), getGameCode(args), getExitTimeout(args));
         if (!res) {
             fmt::print(stderr, "Error starting server\n");
         }
