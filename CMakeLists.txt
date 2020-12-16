@@ -5,6 +5,7 @@ endif()
 cmake_minimum_required(VERSION 3.0.0)
 
 project(complexity)
+set(APP_NAME complexity)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -74,7 +75,9 @@ message(STATUS "LuaJIT Library Dir: ${LUAJIT_LIBRARY_DIR}")
 
 add_subdirectory(deps/soloud)
 
-add_executable(complexity ${SRC})
+# add_executable(complexity ${SRC})
+add_executable(complexity MACOSX_BUNDLE ${SRC})
+
 target_include_directories(complexity PUBLIC include)
 target_include_directories(complexity PRIVATE deps/glwrap/include)
 target_include_directories(complexity PRIVATE deps/gltf)
@@ -92,3 +95,21 @@ target_link_libraries(complexity PRIVATE luajit)
 target_link_libraries(complexity PRIVATE soloud)
 
 set_wall(complexity)
+
+# Destination paths below are relative to ${CMAKE_INSTALL_PREFIX}
+install(TARGETS ${APP_NAME}
+    BUNDLE DESTINATION . COMPONENT Runtime
+    RUNTIME DESTINATION bin COMPONENT Runtime
+    )
+
+# Note Mac specific extension .app
+set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
+
+# Directories to look for dependencies
+set(DIRS ${CMAKE_BINARY_DIR})
+
+install(CODE "include(BundleUtilities)
+    fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
+
+set(CPACK_GENERATOR "DRAGNDROP")
+include(CPack)

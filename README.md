@@ -33,3 +33,21 @@ You can find the necessary packages in [build.yml](.github/workflows/build.yml).
 
 See above, but thankfully every package, except [docopt](https://github.com/docopt/docopt.cpp) is available on homebrew. To install that manually, just clone it and do the usual CMake song and dance.
 [LuaJIT](https://github.com/LuaJIT/LuaJIT) is also on homebrew but.. don't use it. So please also just clone and manually install it (`make MACOSX_DEPLOYMENT_TARGET=10.15 && make install` or something like that).
+
+### Build .dmg
+
+```sh
+mkdir build
+cd build
+cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -G 'Ninja' ..
+
+ninja
+
+# Fix enet permissions
+chmod +w /usr/local/opt/enet/lib/libenet.7.dylib
+
+# Copy media
+cp -r ../media/ complexity.app/Contents/media
+
+cpack -G DragNDrop
+```
