@@ -18,10 +18,9 @@ local state = {
 logs("")
 
 log("", logLevel.INFO, "Fueling complete")
-log("", logLevel.INFO, "Ship detached from omega station")
-log("", logLevel.INFO, "All systems in stand by")
+log("", logLevel.INFO, "Ship docked to intergalactic space port Garzikulon Prime")
 log("", logLevel.INFO, "System status check complete: systems nominal")
-log("", logLevel.INFO, "Current destiation: Veros ")
+log("", logLevel.INFO, "Current destination: Veros jump gate")
 log("", logLevel.INFO, "Jump not ready: Navigation computer offline")
 
 -- update
