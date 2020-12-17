@@ -2,17 +2,22 @@
 
 PGPASSWORD=secret psql -h localhost -U postgres << EOF
 	SELECT
-		vms.vmId AS "Id",
-		vms.region AS "Region",
-		vms.state AS "State",
-		vms.ipv4Address AS "Ipv4 Address",
-		vms.dropletId AS "Droplet Id",
-		TO_CHAR(vms.timeStarted, 'yyyy-mm-dd hh:mi') AS "Started",
-		TO_CHAR(vms.timeTerminated, 'yyyy-mm-dd hh:mi') AS "Terminated",
-		TO_CHAR(AGE(vms.timeTerminated, vms.timeStarted), 'hh:mi:ss') AS "Runtime",
-		COUNT(games.gameId) AS "Games Count"
-	FROM vms
-	LEFT JOIN games ON games.vmid = vms.vmid
-	GROUP BY vms.vmId
-	ORDER BY vms.timestarted;
+		games.gameId as "Id",
+		CONCAT(
+			games.host,
+			':',
+			games.port,
+			':',
+			games.gameCode
+		) as "Game Code",
+		games.creatorIpAddress as "IP Creator",
+		games.state as "State",
+		games.version as "Version",
+		vms.region as "Region",
+		TO_CHAR(games.timeStarted, 'yyyy-mm-dd hh:mi') AS "Started",
+		TO_CHAR(games.timeEnded, 'yyyy-mm-dd hh:mi') AS "Ended",
+		TO_CHAR(AGE(games.timeEnded, games.timeStarted), 'hh:mi:ss') AS "Duration"
+	FROM games
+	LEFT JOIN vms ON games.vmid = vms.vmid
+	ORDER BY games.timestarted;
 EOF
