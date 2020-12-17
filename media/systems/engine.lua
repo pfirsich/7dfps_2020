@@ -56,14 +56,14 @@ tick(1.0, function()
         log("", logLevel.INFO, ("Request power: %f %f"):format(powerBalance, powerUsage))
         powerBalance = powerBalance - powerUsage
 
-        if powerBalance < powerUsage * 4 then
+        if powerBalance < -powerUsage * 4 then
             log("", logLevel.WARNING, "Power critically low")
-        elseif powerBalance < powerUsage * 2 then
+        elseif powerBalance < -powerUsage * 2 then
             log("", logLevel.WARNING, "Low power")
         end
 
         -- after a couple seconds
-        if powerBalance < powerUsage * 6 then
+        if powerBalance < -powerUsage * 6 then
             log("", logLevel.ERROR, "Engine shutdown")
             state = {
                 name = "off"
