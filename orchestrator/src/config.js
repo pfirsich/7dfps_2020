@@ -22,6 +22,6 @@ module.exports = {
     // Orchestrator Key
     "46:17:b4:bd:7d:bf:f1:4e:40:de:e3:d8:77:a3:bf:41",
   ],
-  vmTags: ["complexity-vm"],
-  vmPrefix: "complexity-vm-",
+  vmTags: ["ac-vm"],
+  vmPrefix: "ac-vm-",
 };
