@@ -81,13 +81,13 @@ async function getFreeVms({ region, maxGamesOnVm }) {
 }
 
 async function getEmptyVms() {
-  // Get VMs that are not TERMINATED and where no games exits which are still
+  // Get VMs that are RUNNING and where no games exits which are still
   // running or just ended less than 20 minutes ago.
   // Excuse my subselects.
   const res = await query(
     `SELECT *
      FROM vms
-     WHERE vms.state != 'TERMINATED'
+     WHERE vms.state = 'RUNNING'
          AND NOT EXISTS (
              SELECT vmId
              FROM games
