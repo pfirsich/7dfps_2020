@@ -30,9 +30,14 @@ async function fetchJson(url, options, validate) {
 }
 
 async function getIpGeo(ipAddress) {
-  const { data } = await fetchJson(
-    `https://tools.keycdn.com/geo.json?host=${ipAddress}`
-  );
+  let url;
+  if (ipAddress && ipAddress !== "::1") {
+    url = `https://tools.keycdn.com/geo.json?host=${ipAddress}`;
+  } else {
+    url = "https://tools.keycdn.com/geo.json";
+  }
+
+  const { data } = await fetchJson(url);
 
   if (!data.geo.latitude) {
     throw new Error(`No location for IP: ${ipAddress}`);
