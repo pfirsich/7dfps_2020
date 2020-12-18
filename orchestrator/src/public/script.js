@@ -175,11 +175,11 @@ async function init() {
     .map(([key, value]) => {
       let text = value.name;
 
-      if (value.distance) {
-        text += ", ~";
-        text += value.distance;
-        text += "km";
-      }
+      // if (value.distance) {
+      //   text += ", ~";
+      //   text += value.distance;
+      //   text += "km";
+      // }
 
       if (value.estimatedRtt) {
         text += ", ~";
