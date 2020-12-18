@@ -1,7 +1,33 @@
+async function fetchJson(url, options, validate) {
+  const response = await fetch(url, options);
+  let json;
+  let jsonError;
+  try {
+    json = await response.json();
+  } catch (error) {
+    jsonError = error;
+  }
+
+  if (json && validate) {
+    validate(json);
+    return json;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Unexpected Status: ${response.status}`);
+  }
+
+  if (json) {
+    return json;
+  }
+
+  throw jsonError;
+}
+
 function onError(e) {
   console.error(e);
 
-  document.getElementById("screenWait").innerText = e.message;
+  document.getElementById("screenWait").innerText = e;
 
   document.getElementById("screenWait").style.display = "block";
   document.getElementById("screenForm").style.display = "none";
@@ -9,7 +35,7 @@ function onError(e) {
 }
 
 function fallbackCopyTextToClipboard(text) {
-  var textArea = document.createElement("textarea");
+  const textArea = document.createElement("textarea");
   textArea.value = text;
 
   // Avoid scrolling to bottom
@@ -22,9 +48,9 @@ function fallbackCopyTextToClipboard(text) {
   textArea.select();
 
   try {
-    var successful = document.execCommand("copy");
-    var msg = successful ? "successful" : "unsuccessful";
-    console.log("Fallback: Copying text command was " + msg);
+    const successful = document.execCommand("copy");
+    const msg = successful ? "successful" : "unsuccessful";
+    console.log(`Fallback: Copying text command was ${msg}`);
   } catch (err) {
     console.error("Fallback: Oops, unable to copy", err);
   }
@@ -38,10 +64,10 @@ function copyTextToClipboard(text) {
     return;
   }
   navigator.clipboard.writeText(text).then(
-    function () {
+    () => {
       console.log("Async: Copying to clipboard was successful!");
     },
-    function (err) {
+    (err) => {
       console.error("Async: Could not copy text: ", err);
     }
   );
@@ -79,49 +105,56 @@ async function submit(event) {
   document.getElementById("screenForm").style.display = "none";
   document.getElementById("screenDone").style.display = "none";
 
-  let body;
-  if (event.target.version) {
-    body = JSON.stringify({
-      version: event.target.version && event.target.version.value,
-      region: event.target.region.value,
-    });
-  } else {
-    body = JSON.stringify({
-      region: event.target.region.value,
-    });
+  const body = {
+    version: event.target.version && event.target.version.value,
+    region: event.target.region && event.target.region.value,
+  };
+
+  if (!event.target.version) {
+    delete body.version;
   }
 
-  const interval = setInterval(update, 431);
-  const response = await fetch("/games", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body,
-  });
-
-  clearInterval(interval);
-
-  const json = await response.json();
-
-  if (json.msg) {
-    throw new Error(json.msg);
+  let interval;
+  let gameInfo;
+  try {
+    interval = setInterval(update, 431);
+    gameInfo = await fetchJson(
+      "/games",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      },
+      (json) => {
+        if (json.msg) {
+          throw new Error(json.msg);
+        }
+      }
+    );
+  } finally {
+    clearInterval(interval);
   }
+
+  const gameString = `${gameInfo.host}:${gameInfo.port}:${gameInfo.gameCode}`;
+  const copyGameString = () => {
+    copyTextToClipboard(gameString);
+  };
 
   document.getElementById("screenDone").innerHTML = `
     <h2>Game Code: </h2>
-    <input type="text" id="inputHost" readonly value="${json.host}:${json.port}:${json.gameCode}" style="width: 380px;">  <button type="button" id="copy">Copy</button>
+    <input type="text" id="inputHost" readonly value="${gameString}" style="width: 380px;">
+    <button type="button" id="copy">Copy</button>
 
     <br><br>
     Share this code to play together.
   `;
 
-  document.getElementById("copy").addEventListener("click", () => {
-    copyTextToClipboard(`${json.host}:${json.port}:${json.gameCode}`);
-  });
-  document.getElementById("inputHost").addEventListener("click", () => {
-    copyTextToClipboard(`${json.host}:${json.port}:${json.gameCode}`);
-  });
+  document.getElementById("copy").addEventListener("click", copyGameString);
+  document
+    .getElementById("inputHost")
+    .addEventListener("click", copyGameString);
 
   document.getElementById("screenWait").style.display = "none";
   document.getElementById("screenForm").style.display = "none";
@@ -129,14 +162,34 @@ async function submit(event) {
 }
 
 async function init() {
-  const response = await fetch("/regions");
-  const regions = await response.json();
+  const regions = await fetchJson("/regions", null, (json) => {
+    if (json.msg) {
+      throw new Error(json.msg);
+    }
+  });
 
-  document.getElementById("regions").innerHTML = Object.entries(regions).map(
-    ([key, value]) => `
-        <option value="${key}">${value.name}</option>
-      `
-  );
+  const options = Object.entries(regions);
+  options.sort((a, b) => a[1].estimatedRtt - b[1].estimatedRtt);
+
+  document.getElementById("regions").innerHTML = options
+    .map(([key, value]) => {
+      let text = value.name;
+
+      if (value.distance) {
+        text += ", ~";
+        text += value.distance;
+        text += "km";
+      }
+
+      if (value.estimatedRtt) {
+        text += ", ~";
+        text += value.estimatedRtt;
+        text += "ms ping";
+      }
+
+      return `  <option value="${key}">${text}</option>`;
+    })
+    .join("\n");
 
   document.getElementById("screenWait").style.display = "none";
   document.getElementById("screenForm").style.display = "block";

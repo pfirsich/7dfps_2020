@@ -24,4 +24,6 @@ module.exports = {
   ],
   vmTags: ["ac-vm"],
   vmPrefix: "ac-vm-",
+
+  activeRegions: ["fra1", "sfo3", "nyc1", "sgp1"],
 };

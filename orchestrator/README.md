@@ -40,6 +40,8 @@ Example response:
 }
 ```
 
+Uses the [IP Location Finder by KeyCDN](https://tools.keycdn.com/geo) to find the closest server
+
 ### Create Game
 
 ```sh

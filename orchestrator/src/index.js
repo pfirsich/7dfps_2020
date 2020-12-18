@@ -2,14 +2,23 @@ require("dotenv").config();
 
 const path = require("path");
 const express = require("express");
-
 const morgan = require("morgan");
+
 const manager = require("./manager");
-const regions = require("./regions");
+const geo = require("./geo");
 
 const app = express();
 
 const VALID_VERSIONS = ["jam", "latest"];
+
+function getClientIp(req) {
+  return (
+    (req.headers["x-forwarded-for"] || "").split(",").pop().trim() ||
+    req.connection.remoteAddress ||
+    req.socket.remoteAddress ||
+    req.connection.socket.remoteAddress
+  );
+}
 
 // http logging
 app.use(morgan("tiny"));
@@ -18,29 +27,26 @@ app.use(express.json());
 
 app.use("/", express.static(path.join(__dirname, "public")));
 
-app.get("/regions", (req, res) => {
-  res.json(regions);
+app.get("/regions", async (req, res) => {
+  try {
+    const ipAddress = getClientIp(req);
+    const regions = await geo.getRegions(ipAddress);
+
+    res.json(regions);
+  } catch (error) {
+    console.error("Error while getting regions", error);
+
+    res.status(500).json({
+      msg: "Internal server error",
+    });
+  }
 });
 
 app.post("/games", async (req, res) => {
-  function getClientIp(req) {
-    return (
-      (req.headers["x-forwarded-for"] || "").split(",").pop().trim() ||
-      req.connection.remoteAddress ||
-      req.socket.remoteAddress ||
-      req.connection.socket.remoteAddress
-    );
-  }
-
   const { region } = req.body;
   const version = req.body.version || "latest";
 
-  if (!region) {
-    res.status(400).json({ msg: "Invalid JSON" });
-    return;
-  }
-
-  if (!regions[region]) {
+  if (!geo.isValidRegion(region)) {
     res.status(400).json({ msg: "Invalid region" });
     return;
   }

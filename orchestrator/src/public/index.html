@@ -46,6 +46,11 @@
         text-decoration: none;
       }
 
+      label > select {
+        display: block;
+        margin-top: 16px;
+      }
+
       option {
         background-color: #191819;
       }
@@ -106,14 +111,14 @@
       <br />
       <form id="form" action="/games" method="post">
         <label>
-          Region:
+          Server Location:
           <select name="region" id="regions"></select>
         </label>
 
+        <!--
         <br />
         <br />
 
-        <!--
         <label>
           Version:
           <select name="version">
