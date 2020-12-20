@@ -31,6 +31,30 @@ function approachExp (value, target, speed)
     return value + (target - value) * speed
 end
 
+-- This is like coroutine.wrap, but if you call the returned function
+-- after the coroutine's status is "dead", it will be recreated.
+function cowrap(f)
+    local c = coroutine.create(f)
+    return function(...)
+        local s = coroutine.status(c)
+        if s == "dead" then
+            c = coroutine.create(f)
+        end
+        return select(2, coroutine.resume(c, ...))
+    end
+end
+
+function command(cmd, sub, args, func)
+    command_(cmd, sub, args, cowrap(func))
+end
+
+function asleep(sec)
+    local start = time()
+    while time() - start < sec do
+        coroutine.yield(true)
+    end
+end
+
 logLevel = {
     DEBUG = 0,
     INFO = 1,

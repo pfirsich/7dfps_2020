@@ -102,6 +102,18 @@ command("jump", "", {}, function()
     end
 end)
 
+command("longcommand", "", {"STRING"}, function(str)
+    terminalOutput(("Doing %s.."):format(str))
+    asleep(1)
+    terminalOutput("25%")
+    asleep(1)
+    terminalOutput("50%")
+    asleep(1)
+    terminalOutput("75%")
+    asleep(1)
+    terminalOutput("Complete")
+end)
+
 subscribe("systemStatus", function(sender, value)
     log("", logLevel.INFO, ("Received health check result from %s"):format(sender))
 

@@ -87,7 +87,7 @@ public:
     using SensorValue = float;
     using SensorFunc = std::function<SensorValue(void)>;
     using CommandArg = std::variant<std::string, float>;
-    using CommandFunc = std::function<void(const std::vector<CommandArg>&)>;
+    using CommandFunc = std::function<bool(const std::vector<CommandArg>&)>;
     using LogId = std::string;
 
     enum class LogLevel { Debug = 0, Info, Warning, Error };
@@ -108,6 +108,7 @@ public:
         const std::vector<std::string>& arguments, CommandFunc func);
     void executeCommand(const std::string& command);
     void executeCommand(const std::vector<std::string>& args);
+    bool commandRunning() const;
 
     void addSensor(const SensorId& id, SensorFunc func);
     std::vector<SensorId> getSensors() const;
@@ -142,7 +143,7 @@ private:
         struct SubCommand {
             std::string name;
             std::vector<std::string> arguments;
-            std::function<void(const std::vector<CommandArg>&)> handler;
+            CommandFunc handler;
 
             std::string getUsage() const;
         };
@@ -179,11 +180,13 @@ private:
     std::optional<size_t> findSensor(const SensorId& id) const;
     std::optional<size_t> findLog(const LogId& id) const;
 
-    std::optional<std::vector<ShipSystem::CommandArg>> parseCommandArgs(
-        const ShipSystem::Command& command, const ShipSystem::Command::SubCommand& subCommand,
-        const std::vector<std::string>& args, size_t argsStart);
+    std::optional<std::vector<CommandArg>> parseCommandArgs(const Command& command,
+        const Command::SubCommand& subCommand, const std::vector<std::string>& args,
+        size_t argsStart);
     void sensorShowCommand(const std::vector<CommandArg>& arg);
     void manCommand();
+    void executeCommand(
+        size_t commandIndex, size_t subCommandIndex, const std::vector<CommandArg>& args);
 
     static std::string_view getLogLevelString(LogLevel level);
 
@@ -195,6 +198,8 @@ private:
     std::vector<Command> commands_;
     std::vector<Log> logs_;
     std::string terminalOutput_;
+    // Tuple of commands_ and subCommands indices. Yes, I don't know wtf I am doing.
+    std::optional<std::pair<size_t, size_t>> currentCommand_ = std::nullopt;
     size_t totalTerminalOutputSize_ = 0;
     size_t terminalOutputStart_ = 0;
     std::string terminalInput_;

@@ -119,6 +119,14 @@ void ShipSystem::update()
             tick.lastTick = now;
         }
     }
+
+    if (currentCommand_) {
+        const auto [cmdIdx, subCmdIdx] = *currentCommand_;
+        const auto resume = commands_[cmdIdx].subCommands[subCmdIdx].handler({});
+        if (!resume) {
+            currentCommand_ = std::nullopt;
+        }
+    }
 }
 
 void ShipSystem::addCommand(const std::string& name, const std::optional<std::string>& subCommand,
@@ -206,6 +214,17 @@ std::optional<std::vector<ShipSystem::CommandArg>> ShipSystem::parseCommandArgs(
     return parsed;
 }
 
+void ShipSystem::executeCommand(
+    size_t commandIndex, size_t subCommandIndex, const std::vector<CommandArg>& args)
+{
+    const auto resume = commands_[commandIndex].subCommands[subCommandIndex].handler(args);
+    if (resume) {
+        currentCommand_ = std::make_pair(commandIndex, subCommandIndex);
+    } else {
+        currentCommand_ = std::nullopt;
+    }
+}
+
 void ShipSystem::executeCommand(const std::vector<std::string>& args)
 {
     if (args.empty()) {
@@ -235,7 +254,7 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
             }
             return;
         }
-        command.subCommands[*noSubIdx].handler({});
+        executeCommand(*idx, *noSubIdx, {});
         return;
     }
 
@@ -247,7 +266,7 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
             const auto parsed = parseCommandArgs(command, subCommand, args, 1);
             if (!parsed)
                 return;
-            subCommand.handler(*parsed);
+            executeCommand(*idx, *noSubIdx, *parsed);
             return;
         } else {
             terminalOutput("Available sub commands:\n");
@@ -261,13 +280,18 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
     const auto parsed = parseCommandArgs(command, subCommand, args, 2);
     if (!parsed)
         return;
-    subCommand.handler(*parsed);
+    executeCommand(*idx, *subIdx, *parsed);
 }
 
 void ShipSystem::executeCommand(const std::string& command)
 {
     terminalOutput(fmt::format("root@{}:~# {}\n", name_, command));
     executeCommand(split(command));
+}
+
+bool ShipSystem::commandRunning() const
+{
+    return currentCommand_.has_value();
 }
 
 void ShipSystem::sensorShowCommand(const std::vector<CommandArg>& args)
@@ -299,24 +323,34 @@ void ShipSystem::addBuiltinCommands()
 {
     // The refs here are dangerous, but it is what it is
     for (const auto& log : logs_) {
-        addCommand("log", log.id, {},
-            [this, &log](const std::vector<CommandArg>&) { terminalOutput(getLogText(log.id)); });
+        addCommand("log", log.id, {}, [this, &log](const std::vector<CommandArg>&) {
+            terminalOutput(getLogText(log.id));
+            return false;
+        });
     }
 
-    addCommand("manual", "", {}, [this](const std::vector<CommandArg>&) { manCommand(); });
+    addCommand("manual", "", {}, [this](const std::vector<CommandArg>&) {
+        manCommand();
+        return false;
+    });
     for (const auto& entry : manuals_) {
         const auto& manual = entry.second;
-        addCommand("manual", entry.first, {},
-            [this, &manual](const std::vector<CommandArg>&) { terminalOutput(manual); });
+        addCommand("manual", entry.first, {}, [this, &manual](const std::vector<CommandArg>&) {
+            terminalOutput(manual);
+            return false;
+        });
     }
 
     addCommand("sensor", "list", {}, [this](const std::vector<CommandArg>&) {
         for (const auto& sensor : sensors_) {
             terminalOutput(sensor.id);
         }
+        return false;
     });
-    addCommand("sensor", "show", { "SENSORNAME" },
-        [this](const std::vector<CommandArg>& args) { sensorShowCommand(args); });
+    addCommand("sensor", "show", { "SENSORNAME" }, [this](const std::vector<CommandArg>& args) {
+        sensorShowCommand(args);
+        return false;
+    });
 }
 
 void ShipSystem::addSensor(const ShipSystem::SensorId& id, ShipSystem::SensorFunc func)
@@ -567,16 +601,18 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
     });
     lua["manual"].set_function(
         [this](const std::string& name, const std::string& text) { addManual(name, text); });
-    lua["command"].set_function([this](const std::string& command,
-                                    const std::optional<std::string>& subCommand,
-                                    sol::table arguments, sol::function func) {
-        std::vector<std::string> args;
-        for (size_t i = 0; i < arguments.size(); ++i) {
-            args.push_back(arguments[i + 1]);
-        }
-        addCommand(command, subCommand, args,
-            [func](const std::vector<CommandArg>& args) { checkError(func(sol::as_args(args))); });
-    });
+    lua["command_"].set_function(
+        [this](const std::string& command, const std::optional<std::string>& subCommand,
+            sol::table arguments, sol::function func) {
+            std::vector<std::string> args;
+            for (size_t i = 0; i < arguments.size(); ++i) {
+                args.push_back(arguments[i + 1]);
+            }
+            addCommand(command, subCommand, args, [func](const std::vector<CommandArg>& args) {
+                const auto res = checkError(func(sol::as_args(args)));
+                return res.get_type() == sol::type::boolean && res.get<bool>() == true;
+            });
+        });
     lua["terminalOutput"].set_function([this](const std::string& text) { terminalOutput(text); });
     lua["setAlarm"].set_function([this]() { alarm = true; });
     lua["hasAlarm"].set_function([this]() { return alarm; });
@@ -588,6 +624,7 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
     lua["log"].set_function([this](const std::string& logId, int level, const std::string& text) {
         log(logId, static_cast<LogLevel>(level), text);
     });
+    lua["time"].set_function([]() { return glwx::getTime(); });
 
     lua.script_file(scriptPath.u8string());
     addBuiltinCommands();
