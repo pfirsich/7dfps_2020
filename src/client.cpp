@@ -608,24 +608,35 @@ void Client::update(float dt)
         // :)
         updateListener(player_.get<comp::Transform>(), -player_.get<comp::Velocity>().value);
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
+        auto& trafo = player_.get<comp::Transform>();
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
         const auto targetDist = 3.0f;
-        const auto targetPos = termTrafo.getPosition() - termTrafo.getForward() * targetDist;
-        const auto delta = targetPos - player_.get<comp::Transform>().getPosition();
+        auto targetPos = termTrafo.getPosition() - termTrafo.getForward() * targetDist;
+        targetPos.y = trafo.getPosition().y;
+        const auto delta = targetPos - trafo.getPosition();
         const auto dist = glm::length(delta) + 1e-5f;
-        if (dist > 0.01f) {
-            const auto dir = delta / dist;
-            auto& trafo = player_.get<comp::Transform>();
-            trafo.move(dir * std::min(dist, 5.0f * dt));
-            const auto startDist = glm::length(targetPos - terminal->startPos);
-            const auto t = rescale(dist, startDist, 0.0f, 0.0f, 1.0f);
-            const auto targetOrientation = -termTrafo.getOrientation();
-            trafo.setOrientation(glm::slerp(trafo.getOrientation(), targetOrientation, t));
-        } else {
-            // playerLookSystem(world_, dt); // maybe put this in later
-        }
+        const auto dir = delta / dist;
+        const auto moveSpeed = 5.0f;
+        trafo.move(dir * std::min(dist, moveSpeed * dt));
 
-        if (player_.get<comp::PlayerInputController>().interact->getPressed()) {
+        // Logically this is not very clean at all, but it looks better than the alternatives I have
+        // tried, so it is what I will use.
+        const auto currentLookPos = trafo.getPosition() + trafo.getForward() * targetDist;
+        auto targetLookPos = termTrafo.getPosition();
+        targetLookPos.y = trafo.getPosition().y;
+        const auto lookPosDelta = targetLookPos - currentLookPos;
+        const auto lookPosDist = glm::length(lookPosDelta) + 1e-5f;
+        const auto lookPosDeltaDir = lookPosDelta / lookPosDist;
+        const auto lookAtPos
+            = currentLookPos + lookPosDeltaDir * std::min(lookPosDist, moveSpeed * 2.0f * dt);
+        trafo.lookAt(lookAtPos);
+
+        auto& ctrl = player_.get<comp::PlayerInputController>();
+        const auto angles = glm::eulerAngles(trafo.getOrientation());
+        ctrl.pitch = angles.y;
+        ctrl.yaw = angles.x;
+
+        if (ctrl.interact->getPressed()) {
             stopTerminalInteraction();
         }
 
@@ -766,8 +777,7 @@ ecs::EntityHandle Client::findTerminal(const std::string& system)
 void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerInteractTerminal>& message)
 {
-    state_ = TerminalState { findTerminal(message.terminal), message.terminal, "",
-        player_.get<comp::Transform>().getPosition() };
+    state_ = TerminalState { findTerminal(message.terminal), message.terminal, "" };
     send(Channel::Reliable, Message<MessageType::ClientUpdateTerminalInput> { "" });
 }
 

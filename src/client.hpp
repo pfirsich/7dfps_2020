@@ -26,7 +26,6 @@ private:
         ecs::EntityHandle terminalEntity;
         std::string systemName;
         std::string terminalInput;
-        glm::vec3 startPos; // this sucks
         int currentHistoryIndex = 0;
     };
 
