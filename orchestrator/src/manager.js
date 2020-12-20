@@ -25,7 +25,7 @@ async function waitForAction(actionId) {
   while (true) {
     tries++;
     if (tries >= maxTries) {
-      throw new Error(`Too many tries waiting for action ${tries}`);
+      throw new Error(`Too many tries waiting for action (${tries} tries)`);
     }
 
     await sleep(waitTimeSec * 1000);
@@ -214,11 +214,9 @@ async function startGame({ region, creatorIpAddress, version }) {
       state: "RUNNING",
     });
   } catch (error) {
-    console.error("Error while creating game", error);
-
     await onExitGame(gameInfo);
 
-    throw new Error(`Creation failed: ${error.message}`);
+    throw error;
   }
 
   return gameInfo;
