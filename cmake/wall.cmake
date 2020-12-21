@@ -6,5 +6,6 @@ function(set_wall target)
     # These are pissing me off so much. I cannot debug with these warnings.
     target_compile_options(${target} PRIVATE -Wno-unused-variable)
     target_compile_options(${target} PRIVATE -Wno-unused-lambda-capture)
+    target_compile_options(${target} PRIVATE -Wno-unused-parameter)
   endif()
 endfunction()

@@ -172,7 +172,7 @@ void Server::processEnetEvents()
             if (connEvent->data != connectCode_) {
                 // disconnect now, so peer is reset and we have a free slot for another
                 // client!
-                enet_peer_disconnect_now(connEvent->peer, connectCode_);
+                enet_peer_disconnect_now(connEvent->peer, version);
             } else {
                 connectPeer(connEvent->peer);
             }

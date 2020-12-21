@@ -309,14 +309,29 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         return false;
     }
 
+    // Aaah, yes. Asscode.
     const auto waitHelloStart = glwx::getTime();
     while (glwx::getTime() - waitHelloStart < 2.0f) {
-        processEnetEvents();
+        std::optional<enet::Event> event;
+        while ((event = host_.service())) {
+            if (const auto recvEvent = std::get_if<enet::ReceiveEvent>(&event.value())) {
+                receive(recvEvent->channelId, recvEvent->packet);
+            } else if (const auto disconnect = std::get_if<enet::DisconnectEvent>(&event.value())) {
+                const auto serverVersion = disconnect->data;
+                if (version != serverVersion) {
+                    showError(fmt::format(
+                        "Mismatching versions (client: {}, server: {}).", version, serverVersion));
+                } else {
+                    showError("Wrong gamecode.");
+                }
+                return false;
+            }
+        }
         if (playerId_ != InvalidPlayerId)
             break;
     }
     if (playerId_ == InvalidPlayerId) {
-        showError("Handshake failed (wrong gamecode or mismatching versions).");
+        showError("Handshake failed.");
         enet_peer_disconnect_now(serverPeer_, 0);
         return false;
     }
@@ -500,7 +515,7 @@ void Client::processEnetEvents()
         if (const auto recvEvent = std::get_if<enet::ReceiveEvent>(&event.value())) {
             receive(recvEvent->channelId, recvEvent->packet);
         } else if (const auto disconnect = std::get_if<enet::DisconnectEvent>(&event.value())) {
-            printErr("Disconnected by server");
+            printErr("Disconnected by server: {}", disconnect->data);
             running_ = false;
         }
     }
