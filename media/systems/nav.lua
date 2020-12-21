@@ -1,15 +1,15 @@
-terminalOutput([[
-.__   __.      ___   ____    ____ ____    ____
-|  \ |  |     /   \  \   \  /   / \   \  /   /
-|   \|  |    /  ^  \  \   \/   /   \   \/   /
-|  . `  |   /  /_\  \  \      /     \      /
-|  |\   |  /  _____  \  \    /       \    /
-|__| \__| /__/     \__\  \__/         \__/
-
-]])
-
-terminalOutput("System log updated. See: 'log'");
-terminalOutput("");
+init(function()
+    sleepLines(initSleep, {
+        [[ __   __       ___   ____    ____ ____    ____]],
+        [[|  \ |  |     /   \  \   \  /   / \   \  /   /]],
+        [[|   \|  |    /  ^  \  \   \/   /   \   \/   /]],
+        [[|  . `  |   /  /_\  \  \      /     \      /]],
+        [[|  |\   |  /  _____  \  \    /       \    /]],
+        [[|__| \__| /__/     \__\  \__/         \__/]],
+        "Logged in as root.",
+        "Type 'manual' to see available commands",
+    })
+end)
 
 local state = {
     name = "off",

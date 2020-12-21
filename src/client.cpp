@@ -819,6 +819,11 @@ void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerUpdateInputEnabled>& message)
 {
     auto& termData = terminalData_[message.terminal];
+    if (const auto ts = std::get_if<TerminalState>(&state_)) {
+        if (ts->systemName == message.terminal && !termData.inputEnabled && message.enabled) {
+            playEntitySound("terminalExecuteDone", ts->terminalEntity);
+        }
+    }
     termData.inputEnabled = message.enabled;
 }
 

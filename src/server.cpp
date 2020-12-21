@@ -318,6 +318,10 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
             it->second.terminalUser = player.id;
             send(player, Channel::Reliable,
                 Message<MessageType::ServerInteractTerminal> { message.terminal });
+            if (!it->second.initialized) {
+                it->second.system->executeInternalCommand("internal_init");
+                it->second.initialized = true;
+            }
         }
     }
 }

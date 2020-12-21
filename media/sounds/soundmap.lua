@@ -5,6 +5,7 @@ return {
     terminalType = "AlienWrite.wav",
     terminalExecute = "Klink.wav",
     terminalExecuteDenied = "Spring.wav",
+    terminalExecuteDone = "Bloop.wav",
     terminalOutput = "AlienScroll.wav",
     engineIdle = "engine.ogg",
     reactorZap = {file = "reactor.wav", halfDistance = 10.0, volume = 0.2},

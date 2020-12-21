@@ -145,7 +145,19 @@ void ShipSystem::addCommand(const std::string& name, const std::optional<std::st
         assert(false);
         return;
     }
-    command.subCommands.push_back(Command::SubCommand { subName, arguments, func });
+    command.subCommands.push_back(Command::SubCommand { subName, arguments, std::move(func) });
+}
+
+void ShipSystem::addInternalCommand(const std::string& command, CommandFunc func)
+{
+    auto idx = findCommand(command);
+    if (idx) {
+        fmt::print(stderr, "Command '{}' is already registered.\n", command);
+        assert(false);
+        return;
+    }
+    commands_.push_back(
+        Command { { Command::SubCommand { "", {}, std::move(func) } }, command, true });
 }
 
 bool ShipSystem::isValidSystemName(const std::string& name)
@@ -238,7 +250,7 @@ void ShipSystem::executeCommand(const std::vector<std::string>& args)
         cmdName = "manual";
 
     const auto idx = findCommand(cmdName);
-    if (!idx) {
+    if (!idx || commands_[*idx].internal) {
         terminalOutput(fmt::format("Command '{}' not found.\nTry: manual\n", args[0]));
         return;
     }
@@ -287,6 +299,17 @@ void ShipSystem::executeCommand(const std::string& command)
 {
     terminalOutput(fmt::format("root@{}:~# {}\n", name_, command));
     executeCommand(split(command));
+}
+
+void ShipSystem::executeInternalCommand(const std::string& commandName)
+{
+    const auto idx = findCommand(commandName);
+    if (!idx || !commands_[*idx].internal) {
+        fmt::print(stderr, "Internal Command '{}' not found.\n", commandName);
+        std::abort();
+    }
+    auto& command = commands_[*idx];
+    executeCommand(*idx, 0, {});
 }
 
 bool ShipSystem::commandRunning() const
@@ -613,6 +636,12 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
                 return res.get_type() == sol::type::boolean && res.get<bool>() == true;
             });
         });
+    lua["init_"].set_function([this](sol::function func) {
+        addInternalCommand("internal_init", [func](const std::vector<CommandArg>&) {
+            const auto res = checkError(func());
+            return res.get_type() == sol::type::boolean && res.get<bool>() == true;
+        });
+    });
     lua["terminalOutput"].set_function([this](const std::string& text) { terminalOutput(text); });
     lua["setAlarm"].set_function([this]() { alarm = true; });
     lua["hasAlarm"].set_function([this]() { return alarm; });
@@ -626,10 +655,9 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
     });
     lua["time"].set_function([]() { return glwx::getTime(); });
 
+    lua.script("require \"media.systems.shared\"");
     lua.script_file(scriptPath.u8string());
     addBuiltinCommands();
-    terminalOutput("Logged in as root.");
-    terminalOutput("Type 'manual' to see available commands");
 }
 
 LuaShipSystem::~LuaShipSystem()

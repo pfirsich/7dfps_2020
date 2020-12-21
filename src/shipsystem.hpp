@@ -106,8 +106,10 @@ public:
     void addBuiltinCommands();
     void addCommand(const std::string& command, const std::optional<std::string>& subCommand,
         const std::vector<std::string>& arguments, CommandFunc func);
+    void addInternalCommand(const std::string& command, CommandFunc func);
     void executeCommand(const std::string& command);
     void executeCommand(const std::vector<std::string>& args);
+    void executeInternalCommand(const std::string& command);
     bool commandRunning() const;
 
     void addSensor(const SensorId& id, SensorFunc func);
@@ -149,6 +151,7 @@ private:
         };
         std::vector<SubCommand> subCommands;
         std::string name;
+        bool internal = false;
 
         std::optional<size_t> findSubCommand(const std::string& name) const;
     };

@@ -1,13 +1,15 @@
-terminalOutput([[
-,88~-_     /~~88b
-d888   \   |   888
-88888   |  `  d88P
-88888   |    d88P
-Y888   /    d88P
-`88_-~    d88P___
-
-
-]])
+init(function()
+    sleepLines(initSleep, {
+        [[,88~-_     /~~88b]],
+        [[d888   \   |   888]],
+        [[88888   |  `  d88P]],
+        [[88888   |    d88P]],
+        [[Y888   /    d88P]],
+        [[`88_-~    d88P___]],
+        "Logged in as root.",
+        "Type 'manual' to see available commands",
+    })
+end)
 
 logs("")
 

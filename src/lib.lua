@@ -48,10 +48,21 @@ function command(cmd, sub, args, func)
     command_(cmd, sub, args, cowrap(func))
 end
 
+function init(func)
+    init_(cowrap(func))
+end
+
 function asleep(sec)
     local start = time()
     while time() - start < sec do
         coroutine.yield(true)
+    end
+end
+
+function sleepLines(sec, lines)
+    for i = 1, #lines do
+        terminalOutput(lines[i])
+        asleep(sec)
     end
 end
 

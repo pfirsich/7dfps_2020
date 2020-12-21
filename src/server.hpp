@@ -37,6 +37,7 @@ private:
         PlayerId terminalUser = InvalidPlayerId;
         std::string terminalInput {};
         bool terminalEnabled = false;
+        bool initialized = false;
     };
 
     template <MessageType MsgType>
