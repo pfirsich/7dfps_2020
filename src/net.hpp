@@ -50,6 +50,7 @@ enum class MessageType : uint8_t {
     ServerUpdateTerminalOutput,
     ServerAddTerminalHistory,
     ClientPlaySound,
+    ServerUpdateInputEnabled,
 };
 
 std::string asString(MessageType messageType);
@@ -187,6 +188,19 @@ struct Message<MessageType::ClientPlaySound> {
     {
         FIELD(name);
         FIELD(position);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ServerUpdateInputEnabled> {
+    std::string terminal;
+    bool enabled;
+
+    SERIALIZE()
+    {
+        FIELD(terminal);
+        FIELD(enabled);
         SERIALIZE_END;
     }
 };

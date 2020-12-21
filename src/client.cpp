@@ -429,6 +429,7 @@ void Client::processSdlEvents()
             break;
         case SDL_KEYDOWN:
             if (auto terminalState = std::get_if<TerminalState>(&state_)) {
+                auto& termData = terminalData_[terminalState->systemName];
                 switch (event.key.keysym.scancode) {
                 case SDL_SCANCODE_UP:
                     terminalHistory(1);
@@ -443,11 +444,15 @@ void Client::processSdlEvents()
                     scrollTerminal(pageScrollAmount);
                     break;
                 case SDL_SCANCODE_RETURN:
-                    send(Channel::Reliable,
-                        Message<MessageType::ClientExecuteCommand> {
-                            terminalState->terminalInput });
-                    terminalState->terminalInput = "";
-                    playEntitySound("terminalExecute", terminalState->terminalEntity);
+                    if (termData.inputEnabled) {
+                        send(Channel::Reliable,
+                            Message<MessageType::ClientExecuteCommand> {
+                                terminalState->terminalInput });
+                        terminalState->terminalInput = "";
+                        playEntitySound("terminalExecute", terminalState->terminalEntity);
+                    } else {
+                        playEntitySound("terminalExecuteDenied", terminalState->terminalEntity);
+                    }
                     break;
                 case SDL_SCANCODE_ESCAPE:
                     stopTerminalInteraction();
@@ -690,6 +695,7 @@ void Client::receive(const enet::Packet& packet)
         MESSAGE_CASE(ServerUpdateTerminalOutput);
         MESSAGE_CASE(ServerAddTerminalHistory);
         MESSAGE_CASE(ClientPlaySound);
+        MESSAGE_CASE(ServerUpdateInputEnabled);
     default:
         fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
     }
@@ -808,6 +814,13 @@ void Client::processMessage(
     play3dSound(message.name, message.position);
 }
 
+void Client::processMessage(
+    uint32_t /*frameNumber*/, const Message<MessageType::ServerUpdateInputEnabled>& message)
+{
+    auto& termData = terminalData_[message.terminal];
+    termData.inputEnabled = message.enabled;
+}
+
 void Client::draw()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -855,12 +868,18 @@ void Client::draw()
             // gets to own inputText.
             static std::string inputText;
             ImGuiInputTextFlags flags = 0;
-            if (inputText != terminalState.terminalInput) { // I probably changed it
+            if (inputText != terminalState.terminalInput) { // I probably changed it, likely history
                 inputText = terminalState.terminalInput;
                 flags = ImGuiInputTextFlags_ReadOnly;
             }
-            ImGui::InputText("Execute", &inputText, flags);
+            if (!termData.inputEnabled) {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f);
+            }
+            ImGui ::InputText("Execute", &inputText, flags);
             terminalState.terminalInput = inputText;
+            if (!termData.inputEnabled) {
+                ImGui::PopStyleVar();
+            }
             ImGui::SetKeyboardFocusHere(-1);
             ImGui::PopItemWidth();
             ImGui::End();

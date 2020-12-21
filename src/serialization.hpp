@@ -94,6 +94,7 @@ public:
         return obj.serialize(*this);
     }
 
+    bool serialize(bool v);
     bool serialize(uint8_t v);
     bool serialize(int8_t v);
     bool serialize(uint16_t v);
@@ -183,6 +184,7 @@ public:
         return obj.serialize(*this);
     }
 
+    bool serialize(bool& v);
     bool serialize(uint8_t& v);
     bool serialize(int8_t& v);
     bool serialize(uint16_t& v);

@@ -78,7 +78,6 @@ bool Server::run(const std::string& host, Port port, uint32_t gameCode, float ex
         while (accumulator >= dt) {
             processEnetEvents();
             tick(dt);
-            broadcastUpdate();
             host_.flush();
             accumulator -= dt;
             time_ += dt;
@@ -100,21 +99,37 @@ void Server::tick(float /*dt*/)
     for (auto& [name, system] : shipSystems_) {
         system.system->update();
 
-        const auto total = system.system->getTotalTerminalOutputSize();
+        const auto terminalEnabled = !system.system->commandRunning();
+
+        const auto totalOutputSize = system.system->getTotalTerminalOutputSize();
         const auto& output = system.system->getTerminalOutput();
         for (auto& player : players_) {
-            const auto lastKnown = player.lastKnownTerminalSize[name];
-            assert(total >= lastKnown);
-            const auto deltaLength = total - lastKnown;
+            const auto lastKnownTermSize = player.lastKnownTerminalSize[name];
+            assert(totalOutputSize >= lastKnownTermSize);
+            const auto deltaLength = totalOutputSize - lastKnownTermSize;
             if (deltaLength > 0) {
                 const auto maxDeltaLength = std::min(deltaLength, output.size());
                 const auto delta = output.substr(output.size() - maxDeltaLength);
                 send(player, Channel::Reliable,
                     Message<MessageType::ServerUpdateTerminalOutput> { name, delta });
-                player.lastKnownTerminalSize[name] = total;
+                player.lastKnownTerminalSize[name] = totalOutputSize;
+            }
+
+            if (terminalEnabled != player.lastKnownTerminalEnabled[name]) {
+                send(player, Channel::Reliable,
+                    Message<MessageType::ServerUpdateInputEnabled> { name, terminalEnabled });
+                player.lastKnownTerminalEnabled[name] = terminalEnabled;
             }
         }
     }
+
+    auto update = Message<MessageType::ServerPlayerStateUpdate>();
+    for (auto& player : players_) {
+        const auto& trafo = player.entity.get<comp::Transform>();
+        update.players.push_back(Message<MessageType::ServerPlayerStateUpdate>::PlayerState {
+            player.id, trafo.getPosition(), trafo.getOrientation() });
+    }
+    broadcast(Channel::Unreliable, update);
 
     if (players_.empty()) {
         if (time_ - lastNonEmpty_ > exitTimeout_) {
@@ -124,17 +139,6 @@ void Server::tick(float /*dt*/)
     } else {
         lastNonEmpty_ = time_;
     }
-}
-
-void Server::broadcastUpdate()
-{
-    auto update = Message<MessageType::ServerPlayerStateUpdate>();
-    for (auto& player : players_) {
-        const auto& trafo = player.entity.get<comp::Transform>();
-        update.players.push_back(Message<MessageType::ServerPlayerStateUpdate>::PlayerState {
-            player.id, trafo.getPosition(), trafo.getOrientation() });
-    }
-    broadcast(Channel::Unreliable, update);
 }
 
 bool Server::isRunning() const
@@ -332,16 +336,19 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
 void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
     const Message<MessageType::ClientExecuteCommand>& message)
 {
-    const auto system = getUsedTerminal(player.id);
-    if (!system) {
+    const auto systemName = getUsedTerminal(player.id);
+    if (!systemName) {
         fmt::print("Player {} executed a command on a terminal update without using a terminal\n",
             player.id);
         return;
     }
-    if (!message.command.empty())
+    if (!message.command.empty()) {
         broadcast(Channel::Reliable,
-            Message<MessageType::ServerAddTerminalHistory> { *system, message.command });
-    shipSystems_.at(*system).system->executeCommand(message.command);
+            Message<MessageType::ServerAddTerminalHistory> { *systemName, message.command });
+    }
+
+    auto& system = shipSystems_.at(*systemName).system;
+    system->executeCommand(message.command);
 }
 
 void Server::processMessage(

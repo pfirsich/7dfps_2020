@@ -37,6 +37,7 @@ private:
         std::string output;
         float scroll = 0.0f;
         float lastMaxScroll = 0.0f;
+        bool inputEnabled = false;
     };
 
     uint32_t showConnectCodeMenu(std::optional<HostPort>& hostPort);
@@ -87,6 +88,8 @@ private:
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerAddTerminalHistory>& message);
     void processMessage(uint32_t frameNumber, const Message<MessageType::ClientPlaySound>& message);
+    void processMessage(
+        uint32_t frameNumber, const Message<MessageType::ServerUpdateInputEnabled>& message);
 
     SoLoud::handle playEntitySound(const std::string& name, const std::string entityName,
         float volume = 1.0f, float playbackSpeed = 1.0f);

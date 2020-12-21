@@ -66,6 +66,11 @@ WriteStream::WriteStream(WriteBuffer& buffer)
 {
 }
 
+bool WriteStream::serialize(bool v)
+{
+    return serializeInt<uint8_t>(v ? 1 : 0);
+}
+
 bool WriteStream::serialize(uint8_t v)
 {
     return serializeInt(v);
@@ -155,6 +160,14 @@ bool ReadBuffer::canRead(size_t numBytes) const
 ReadStream::ReadStream(ReadBuffer& buffer)
     : buffer_(buffer)
 {
+}
+
+bool ReadStream::serialize(bool& v)
+{
+    uint8_t i = 0;
+    const auto ret = serializeInt(i);
+    v = i != 0;
+    return ret;
 }
 
 bool ReadStream::serialize(uint8_t& v)

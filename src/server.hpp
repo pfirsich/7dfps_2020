@@ -25,6 +25,7 @@ private:
         ENetPeer* peer;
         PlayerId id;
         std::unordered_map<ShipSystem::Name, size_t> lastKnownTerminalSize;
+        std::unordered_map<ShipSystem::Name, bool> lastKnownTerminalEnabled;
 
         static PlayerId getNextId();
 
@@ -35,6 +36,7 @@ private:
         std::unique_ptr<ShipSystem> system;
         PlayerId terminalUser = InvalidPlayerId;
         std::string terminalInput {};
+        bool terminalEnabled = false;
     };
 
     template <MessageType MsgType>
@@ -66,7 +68,6 @@ private:
 
     void processEnetEvents();
     void tick(float dt);
-    void broadcastUpdate();
 
     size_t getPlayerIndex(PlayerId id) const;
     PlayerId getPlayerId(const void* peerData) const;
