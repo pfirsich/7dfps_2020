@@ -21,6 +21,7 @@ struct Name {
     std::string value;
 
     static std::string get(ecs::EntityHandle entity);
+    static ecs::EntityHandle find(ecs::World& world, const std::string& name);
 };
 
 struct Rotate {

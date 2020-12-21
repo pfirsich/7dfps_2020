@@ -73,14 +73,3 @@ std::vector<std::string> split(const std::string& str)
     }
     return parts;
 }
-
-ecs::EntityHandle findEntity(ecs::World& world, const std::string& name)
-{
-    ecs::EntityHandle found;
-    world.forEachEntity<const comp::Name>(
-        [&name, &found](ecs::EntityHandle entity, const comp::Name& entityName) {
-            if (!found && entityName.value == name)
-                found = entity;
-        });
-    return found;
-}

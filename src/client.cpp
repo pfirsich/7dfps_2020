@@ -224,20 +224,20 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
     skybox_ = std::make_unique<Skybox>();
     if (!skybox_->load("media/skybox/1.png", "media/skybox/3.png", "media/skybox/5.png",
             "media/skybox/6.png", "media/skybox/2.png", "media/skybox/4.png")) {
-        fmt::print("Could not load 'media/skybox'\n");
+        printErr("Could not load 'media/skybox'");
         return false;
     };
 
     auto shipGltf = GltfFile::load("media/ship.glb");
     if (!shipGltf) {
-        fmt::print("Could not load 'media/ship.glb'\n");
+        printErr("Could not load 'media/ship.glb'");
         return false;
     }
     shipGltf->instantiate(world_);
 
     auto playerGltf = GltfFile::load("media/player.glb");
     if (!playerGltf) {
-        fmt::print("Could not load 'media/player.glb'\n");
+        printErr("Could not load 'media/player.glb'");
         return false;
     }
 
@@ -246,7 +246,7 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
     for (const auto& name : playerMeshNames) {
         auto mesh = playerGltf->getMesh(name);
         if (!mesh) {
-            fmt::print("Mesh '{}' not found in player.glb\n", name);
+            printErr("Mesh '{}' not found in player.glb", name);
             return false;
         }
         playerMeshes_.push_back(mesh);
@@ -254,7 +254,7 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
 
     auto hitMarkerGltf = GltfFile::load("media/marker.glb");
     if (!hitMarkerGltf) {
-        fmt::print("Could not load 'media/marker.glb\n");
+        printErr("Could not load 'media/marker.glb");
         return false;
     }
     hitMarker_ = world_.createEntity();
@@ -297,12 +297,12 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         showError("Could not connect.");
         return false;
     }
-    fmt::print("Connecting to {}:{}..\n", enet::getIp(*addr), addr->port);
+    println("Connecting to {}:{}..", enet::getIp(*addr), addr->port);
 
     // TODO: MAKE THIS NOT BLOCK
     const auto event = host_.service(5000);
     if (event && std::holds_alternative<enet::ConnectEvent>(*event)) {
-        fmt::print("Connected.\n");
+        println("Connected.");
     } else {
         showError("Connection failed.");
         enet_peer_reset(serverPeer_);
@@ -320,7 +320,7 @@ bool Client::run(std::optional<HostPort> hostPort, uint32_t gameCode)
         enet_peer_disconnect_now(serverPeer_, 0);
         return false;
     }
-    fmt::print("Player id: {}\n", playerId_);
+    println("Player id: {}", playerId_);
 
     soloud.setLooping(playEntitySound("engineIdle", "engine"), true);
     soloud.setLooping(playEntitySound("engineIdle", "engine", 1.0f, 2.0f), true);
@@ -500,7 +500,7 @@ void Client::processEnetEvents()
         if (const auto recvEvent = std::get_if<enet::ReceiveEvent>(&event.value())) {
             receive(recvEvent->channelId, recvEvent->packet);
         } else if (const auto disconnect = std::get_if<enet::DisconnectEvent>(&event.value())) {
-            fmt::print(stderr, "Disconnected by server\n");
+            printErr("Disconnected by server");
             running_ = false;
         }
     }
@@ -521,7 +521,7 @@ void Client::handleInteractions()
     if (hit && hit->t <= interactDistance) {
         static ecs::EntityHandle lastHit;
         if (hit->entity != lastHit) {
-            // fmt::print("Hit entity '{}' at t = {}\n", comp::Name::get(hit->entity), hit->t);
+            // println("Hit entity '{}' at t = {}", comp::Name::get(hit->entity), hit->t);
             lastHit = hit->entity;
         }
         if (debugRaycast) {
@@ -577,7 +577,7 @@ SoLoud::handle Client::playEntitySound(
 SoLoud::handle Client::playEntitySound(
     const std::string& name, const std::string entityName, float volume, float playbackSpeed)
 {
-    auto entity = findEntity(world_, entityName);
+    auto entity = comp::Name::find(world_, entityName);
     if (entity) {
         return playEntitySound(name, entity, volume, playbackSpeed);
     }
@@ -685,12 +685,12 @@ void Client::receive(uint8_t channelId, const enet::Packet& packet)
     ReadBuffer buffer(packet.getData<uint8_t>(), packet.getSize());
     CommonMessageHeader header;
     if (!deserialize(buffer, header)) {
-        fmt::print(stderr, "Could not decode common message header\n");
+        printErr("Could not decode common message header");
         return; // Ignore message
     }
     const auto messageType = static_cast<MessageType>(header.messageType);
     if (static_cast<Channel>(channelId) == Channel::Reliable) {
-        // fmt::print("[client] Received message: {}\n", asString(messageType));
+        // println("[client] Received message: {}", asString(messageType));
     }
     switch (messageType) {
         MESSAGE_CASE(ServerHello);
@@ -701,7 +701,7 @@ void Client::receive(uint8_t channelId, const enet::Packet& packet)
         MESSAGE_CASE(ClientPlaySound);
         MESSAGE_CASE(ServerUpdateInputEnabled);
     default:
-        fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
+        printErr("Received unrecognized message: {}", asString(messageType));
     }
 }
 
@@ -737,7 +737,7 @@ void Client::processMessage(
         if (it == players_.end()) {
             addPlayer(player.id);
             it = players_.find(player.id);
-            fmt::print("Player (id = {}) connected\n", player.id);
+            println("Player (id = {}) connected", player.id);
         }
 
         auto& trafo = it->second.get<comp::Transform>();
@@ -763,7 +763,7 @@ void Client::processMessage(
         auto& player = players_.at(id);
         player.destroy();
         players_.erase(id);
-        fmt::print("Player (id = {}) disconnected\n", id);
+        println("Player (id = {}) disconnected", id);
     }
 
     world_.flush();

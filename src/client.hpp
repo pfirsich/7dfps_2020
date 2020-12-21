@@ -10,6 +10,7 @@
 #include "net.hpp"
 #include "shipsystem.hpp"
 #include "sound.hpp"
+#include "util.hpp"
 
 class Client {
 public:
@@ -65,8 +66,7 @@ private:
     {
         Message<MsgType> message;
         if (!deserialize(buffer, message)) {
-            fmt::print(
-                stderr, "Could not decode message of type {}\n", static_cast<uint8_t>(MsgType));
+            printErr("Could not decode message of type {}", static_cast<uint8_t>(MsgType));
             return;
         }
         processMessage(frameNumber, message);

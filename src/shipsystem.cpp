@@ -21,7 +21,7 @@ void MessageBus::subscribe(
 {
     const auto idx = findEndpoint(subscriber);
     if (!idx) {
-        fmt::print(stderr, "Unknown endpoint '{}'\n", subscriber);
+        printErr("Unknown endpoint '{}'", subscriber);
         assert(false);
         return;
     }
@@ -32,13 +32,13 @@ void MessageBus::send(
     const EndpointId& sender, const EndpointId& destination, const Message& message)
 {
     if (!findEndpoint(sender)) {
-        fmt::print(stderr, "Unkown endpoint '{}' for sender\n", sender);
+        printErr("Unkown endpoint '{}' for sender", sender);
         assert(false);
         return;
     }
     const auto idx = findEndpoint(destination);
     if (!idx) {
-        fmt::print(stderr, "Unknown endpoint '{}'\n", destination);
+        printErr("Unknown endpoint '{}'", destination);
         assert(false);
         return;
     }
@@ -48,7 +48,7 @@ void MessageBus::send(
 void MessageBus::broadcast(const EndpointId& sender, const Message& message)
 {
     if (!findEndpoint(sender)) {
-        fmt::print(stderr, "Unkown endpoint '{}' for sender\n", sender);
+        printErr("Unkown endpoint '{}' for sender", sender);
         assert(false);
         return;
     }
@@ -77,13 +77,13 @@ std::optional<size_t> MessageBus::findEndpoint(const EndpointId& id) const
 void MessageBus::send(const EndpointId& sender, const Endpoint& destination, const Message& message)
 {
     if (!findEndpoint(sender)) {
-        fmt::print(stderr, "Unkown endpoint '{}' for sender\n", sender);
+        printErr("Unkown endpoint '{}' for sender", sender);
         assert(false);
         return;
     }
     const auto idx = destination.findSubscription(message.id);
     if (!idx) {
-        fmt::print(stderr, "Endpoint '{}' is not subscribed to '{}'\n", destination.id, message.id);
+        printErr("Endpoint '{}' is not subscribed to '{}'", destination.id, message.id);
         assert(false);
         return;
     }
@@ -141,7 +141,7 @@ void ShipSystem::addCommand(const std::string& name, const std::optional<std::st
     const auto& subName = subCommand.value_or("");
     const auto sidx = command.findSubCommand(subName);
     if (sidx) {
-        fmt::print(stderr, "Command '{} {}' already registered.\n", name, subName);
+        printErr("Command '{} {}' already registered.", name, subName);
         assert(false);
         return;
     }
@@ -152,7 +152,7 @@ void ShipSystem::addInternalCommand(const std::string& command, CommandFunc func
 {
     auto idx = findCommand(command);
     if (idx) {
-        fmt::print(stderr, "Command '{}' is already registered.\n", command);
+        printErr("Command '{}' is already registered.", command);
         assert(false);
         return;
     }
@@ -219,7 +219,7 @@ std::optional<std::vector<ShipSystem::CommandArg>> ShipSystem::parseCommandArgs(
             }
             parsed.push_back(*f);
         } else {
-            fmt::print(stderr, "UNKNOWN COMMAND ARGUMENT '{}'\n", argDef);
+            printErr("UNKNOWN COMMAND ARGUMENT '{}'", argDef);
             parsed.push_back(arg);
         }
     }
@@ -305,7 +305,7 @@ void ShipSystem::executeInternalCommand(const std::string& commandName)
 {
     const auto idx = findCommand(commandName);
     if (!idx || !commands_[*idx].internal) {
-        fmt::print(stderr, "Internal Command '{}' not found.\n", commandName);
+        printErr("Internal Command '{}' not found.", commandName);
         std::abort();
     }
     auto& command = commands_[*idx];
@@ -380,7 +380,7 @@ void ShipSystem::addSensor(const ShipSystem::SensorId& id, ShipSystem::SensorFun
 {
     const auto idx = findSensor(id);
     if (idx) {
-        fmt::print(stderr, "Sensor '{}' already exists\n", id);
+        printErr("Sensor '{}' already exists", id);
         assert(false);
         return;
     }
@@ -400,7 +400,7 @@ ShipSystem::SensorValue ShipSystem::getSensor(const SensorId& id)
 {
     const auto idx = findSensor(id);
     if (!idx) {
-        fmt::print(stderr, "Unknown sensor '{}'\n", id);
+        printErr("Unknown sensor '{}'", id);
         assert(false);
         return SensorValue {};
     }
@@ -416,7 +416,7 @@ void ShipSystem::registerLog(const LogId& id)
 {
     const auto idx = findLog(id);
     if (idx) {
-        fmt::print(stderr, "Log '{}' already registered\n", id);
+        printErr("Log '{}' already registered", id);
         assert(false);
         return;
     }
@@ -427,7 +427,7 @@ void ShipSystem::log(const LogId& id, LogLevel level, std::string text)
 {
     auto idx = findLog(id);
     if (!idx) {
-        fmt::print(stderr, "Log '{}' is not registered\n", id);
+        printErr("Log '{}' is not registered", id);
         assert(false);
         return;
     }
@@ -457,7 +457,7 @@ std::string ShipSystem::getLogText(const LogId& id) const
 {
     auto idx = findLog(id);
     if (!idx) {
-        fmt::print(stderr, "Log '{}' is not registered\n", id);
+        printErr("Log '{}' is not registered", id);
         assert(false);
         return "";
     }
@@ -567,14 +567,14 @@ namespace {
 int solExceptionHandler(lua_State* L, sol::optional<const std::exception&> /*maybeException*/,
     sol::string_view description)
 {
-    fmt::print(stderr, "sol3 Exception: {}\n", description);
+    printErr("sol3 Exception: {}", description);
     return sol::stack::push(L, description);
 }
 
 sol::protected_function_result&& checkError(sol::protected_function_result&& res)
 {
     if (!res.valid()) {
-        fmt::print(stderr, "Lua Error: {}\n", res.get<sol::error>().what());
+        printErr("Lua Error: {}", res.get<sol::error>().what());
         assert(false);
     }
     return std::move(res);

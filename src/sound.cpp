@@ -9,6 +9,8 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
+#include "util.hpp"
+
 namespace {
 static constexpr auto defaultMinDistance = 1.0f;
 static constexpr auto defaultMaxDistance = 60.0f;
@@ -26,7 +28,7 @@ SoundData* getSound(const std::string& name)
     static std::unordered_map<std::string, bool> printedMissingNotice;
     const auto it = sounds.find(name);
     if (it == sounds.end() && !printedMissingNotice[name]) {
-        fmt::print(stderr, "Attempt to play sound that is not assigned: '{}'\n", name);
+        printErr("Attempt to play sound that is not assigned: '{}'", name);
         printedMissingNotice[name] = true;
         return nullptr;
     }
@@ -73,7 +75,7 @@ bool initSound()
 {
     const auto res = soloud.init(SoLoud::Soloud::CLIP_ROUNDOFF, SoLoud::Soloud::SDL2);
     if (res != 0) {
-        fmt::print(stderr, "SoLoud could not be initialized: {}\n", res);
+        printErr("SoLoud could not be initialized: {}", res);
         return false;
     }
 
@@ -84,7 +86,7 @@ bool initSound()
         const auto path = "media/sounds/" + props.filename;
         auto source = std::make_unique<SoLoud::Wav>();
         if (source->load(path.c_str()) != 0) {
-            fmt::print(stderr, "Could not load sound '{}'\n", path);
+            printErr("Could not load sound '{}'", path);
             return false;
         }
         const auto rolloff = getRolloff(props.minDistance, props.halfDistance);

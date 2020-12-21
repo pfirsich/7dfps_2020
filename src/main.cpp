@@ -37,7 +37,7 @@ Port getPort(const std::map<std::string, docopt::value>& args)
 {
     const auto port = parseInt<uint16_t>(args.at("<port>").asString());
     if (!port) {
-        fmt::print(stderr, "Port must be in [0, 65535]\n{}\n", usage);
+        printErr("Port must be in [0, 65535]\n{}", usage);
         std::exit(255);
     }
     return *port;
@@ -48,7 +48,7 @@ uint32_t getGameCode(const std::map<std::string, docopt::value>& args)
     if (args.at("--gamecode")) {
         const auto gameCode = parseInt<uint32_t>(args.at("--gamecode").asString(), 16);
         if (!gameCode) {
-            fmt::print(stderr, "Gamecode must be uint32\n{}\n", usage);
+            printErr("Gamecode must be uint32\n{}", usage);
             std::exit(255);
         }
         return *gameCode;
@@ -60,7 +60,7 @@ float getExitTimeout(const std::map<std::string, docopt::value>& args)
 {
     const auto timeout = parseFloat(args.at("--exit-timeout").asString());
     if (!timeout) {
-        fmt::print(stderr, "Exit timeout must be uint32\n{}\n", usage);
+        printErr("Exit timeout must be uint32\n{}", usage);
         std::exit(255);
     }
     return *timeout;
@@ -69,7 +69,7 @@ float getExitTimeout(const std::map<std::string, docopt::value>& args)
 int main(int argc, char** argv)
 {
     if (enet_initialize()) {
-        fmt::print(stderr, "Could not initialize ENet\n");
+        printErr("Could not initialize ENet");
         return 1;
     }
     atexit(enet_deinitialize);
@@ -91,23 +91,23 @@ int main(int argc, char** argv)
             std::this_thread::sleep_for(100ms);
 
         if (serverFailed.load()) {
-            fmt::print(stderr, "Error starting server\n");
+            printErr("Error starting server");
             serverThread.join();
             return 1;
         }
 
-        fmt::print("Server started\n");
+        println("Server started");
 
         Client client;
         const auto res = client.run(HostPort { "127.0.0.1", 8192 }, 0);
         if (!res) {
-            fmt::print(stderr, "Error starting client\n");
+            printErr("Error starting client");
         }
-        fmt::print("Client stopped\n");
+        println("Client stopped");
 
         server.stop();
         serverThread.join();
-        fmt::print("Server stopped\n");
+        println("Server stopped");
 
         return res ? 0 : 1;
     } else if (args.at("connect").asBool()) {
@@ -115,26 +115,26 @@ int main(int argc, char** argv)
         const auto res = client.run(
             HostPort { args.at("<host>").asString(), getPort(args) }, getGameCode(args));
         if (!res) {
-            fmt::print(stderr, "Error starting client\n");
+            printErr("Error starting client");
         }
-        fmt::print("Client stopped\n");
+        println("Client stopped");
         return res ? 0 : 1;
     } else if (args.at("server").asBool()) {
         Server server;
         const auto res = server.run(
             args.at("<host>").asString(), getPort(args), getGameCode(args), getExitTimeout(args));
         if (!res) {
-            fmt::print(stderr, "Error starting server\n");
+            printErr("Error starting server");
         }
-        fmt::print("Server stopped\n");
+        println("Server stopped");
         return res ? 0 : 1;
     } else {
         Client client;
         const auto res = client.run(std::nullopt, 0);
         if (!res) {
-            fmt::print(stderr, "Error starting client\n");
+            printErr("Error starting client");
         }
-        fmt::print("Client stopped\n");
+        println("Client stopped");
         return res ? 0 : 1;
     }
     return 0;

@@ -52,3 +52,14 @@ std::string comp::Name::get(ecs::EntityHandle entity)
         return name->value;
     return "<unknown>";
 }
+
+ecs::EntityHandle comp::Name::find(ecs::World& world, const std::string& name)
+{
+    ecs::EntityHandle found;
+    world.forEachEntity<const comp::Name>(
+        [&name, &found](ecs::EntityHandle entity, const comp::Name& entityName) {
+            if (!found && entityName.value == name)
+                found = entity;
+        });
+    return found;
+}

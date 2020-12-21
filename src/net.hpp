@@ -6,6 +6,7 @@
 
 #include "enet.hpp"
 #include "serialization.hpp"
+#include "util.hpp"
 #include "version.hpp"
 
 static constexpr size_t maxPlayers = 4;
@@ -227,12 +228,12 @@ bool sendMessage(
     const auto packet
         = enet_packet_create(buffer.getData(), buffer.getSize(), getChannelFlags(channel));
     if (!packet) {
-        fmt::print(stderr, "Could not create packet\n");
+        printErr("Could not create packet");
         return false;
     }
     const auto res = enet_peer_send(peer, static_cast<uint8_t>(channel), packet);
     if (res < 0) {
-        fmt::print(stderr, "Error sending message of type {}\n", MsgType);
+        printErr("Error sending message of type {}", MsgType);
         return false;
     }
     return true;

@@ -5,7 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "components.hpp"
+#include <fmt/format.h>
+#include <glm/glm.hpp>
 
 float lerp(float a, float b, float t);
 float unlerp(float val, float a, float b);
@@ -38,13 +39,33 @@ std::string toLower(const std::string& str);
 
 std::vector<std::string> split(const std::string& str);
 
-ecs::EntityHandle findEntity(ecs::World& world, const std::string& name);
-
 template <typename T>
 T safeNormalize(const T& vec)
 {
     const auto len = glm::length(vec) + 1e-5f;
     return vec / len;
+}
+
+template <typename... Args>
+void println(Args&&... args)
+{
+    fmt::print(std::forward<Args>(args)...);
+    std::putc('\n', stdout);
+    std::fflush(stdout);
+}
+
+template <typename... Args>
+void println(std::FILE* f, Args&&... args)
+{
+    fmt::print(f, std::forward<Args>(args)...);
+    std::putc('\n', f);
+    std::fflush(f);
+}
+
+template <typename... Args>
+void printErr(Args&&... args)
+{
+    println(stderr, std::forward<Args>(args)...);
 }
 
 template <typename T>

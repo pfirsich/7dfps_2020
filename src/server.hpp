@@ -7,6 +7,7 @@
 #include "ecs.hpp"
 #include "net.hpp"
 #include "shipsystem.hpp"
+#include "util.hpp"
 
 class Server {
 public:
@@ -86,7 +87,7 @@ private:
     {
         Message<MsgType> message;
         if (!deserialize(buffer, message)) {
-            fmt::print(stderr, "Could not decode message of type {}\n", MsgType);
+            printErr("Could not decode message of type {}", MsgType);
             return;
         }
         processMessage(player, frameNumber, message);

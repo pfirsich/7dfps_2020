@@ -4,6 +4,7 @@
 #include "graphics.hpp"
 #include "physics.hpp"
 #include "shipsystem.hpp"
+#include "util.hpp"
 
 namespace {
 template <typename T, typename Container>
@@ -235,7 +236,7 @@ struct GltfFile::ImportCache {
                         entity.add<comp::VisualLink>().entity
                             = getEntity(world, gltfFile, *nodeIndex, server);
                     } else {
-                        fmt::print(stderr, "Invalid visual link '{}'\n", name);
+                        printErr("Invalid visual link '{}'", name);
                     }
                 }
                 if (obj.count("ladder")) {
@@ -245,8 +246,8 @@ struct GltfFile::ImportCache {
                         = dir == "up" ? comp::Ladder::Dir::Up : comp::Ladder::Dir::Down;
                 }
                 if (obj.count("terminal")) {
-                    fmt::print("Terminal '{}': {}\n", std::get<std::string>(obj.at("terminal")),
-                        *node.name);
+                    println(
+                        "Terminal '{}': {}", std::get<std::string>(obj.at("terminal")), *node.name);
                     entity.add<comp::Terminal>().systemName
                         = std::get<std::string>(obj.at("terminal"));
                 }

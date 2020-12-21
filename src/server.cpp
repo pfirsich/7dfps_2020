@@ -27,17 +27,17 @@ bool Server::run(const std::string& host, Port port, uint32_t gameCode, float ex
     connectCode_ = getConnectCode(gameCode);
     exitTimeout_ = exitTimeout;
 
-    fmt::print("Loading map..\n");
+    println("Loading map..");
 
     auto shipGltf = GltfFile::load("media/ship.glb");
     if (!shipGltf) {
-        fmt::print("Could not load 'media/ship.glb'\n");
+        printErr("Could not load 'media/ship.glb'");
         return false;
     }
     shipGltf->instantiate(world_, true);
     world_.flush();
 
-    fmt::print("Done\n");
+    println("Done");
 
     shipSystems_.emplace("reactor",
         ShipSystemData { std::make_unique<LuaShipSystem>("reactor", "media/systems/reactor.lua") });
@@ -52,17 +52,17 @@ bool Server::run(const std::string& host, Port port, uint32_t gameCode, float ex
 
     const auto addr = enet::getAddress(host, port);
     if (!addr) {
-        fmt::print(stderr, "Could not get address\n");
+        printErr("Could not get address");
         return false;
     }
 
     host_ = enet::Host(*addr, maxPlayers, static_cast<uint8_t>(Channel::Count));
     if (!host_) {
-        fmt::print(stderr, "Could not create server host\n");
+        printErr("Could not create server host");
         return false;
     }
 
-    fmt::print("Listening on {}:{}..\n", host, port);
+    println("Listening on {}:{}..", host, port);
 
     running_.store(true);
     time_ = 0.0f;
@@ -145,7 +145,7 @@ void Server::tick(float /*dt*/)
 
     if (players_.empty()) {
         if (time_ - lastNonEmpty_ > exitTimeout_) {
-            fmt::print("Exit timeout reached\n");
+            println("Exit timeout reached");
             running_.store(false);
         }
     } else {
@@ -181,7 +181,7 @@ void Server::processEnetEvents()
         } else if (const auto recvEvent = std::get_if<enet::ReceiveEvent>(&event.value())) {
             receive(getPlayerId(recvEvent->peer->data), recvEvent->channelId, recvEvent->packet);
         } else if (const auto errEvent = std::get_if<enet::ServiceFailedEvent>(&event.value())) {
-            fmt::print(stderr, "Host service failed: {}\n", errEvent->result);
+            printErr("Host service failed: {}", errEvent->result);
         }
     }
 }
@@ -237,7 +237,7 @@ void Server::connectPeer(ENetPeer* peer)
     auto& player = players_.emplace_back(peer);
     peer->data = reinterpret_cast<void*>(player.id);
     const auto ip = enet::getIp(peer->address).value();
-    fmt::print("Client connected from {}: id = {}\n", ip, player.id);
+    println("Client connected from {}: id = {}", ip, player.id);
     player.entity = world_.createEntity();
     player.entity.add<comp::Name>(comp::Name { "player_" + std::to_string(player.id) });
     player.entity.add<comp::NetworkPlayer>();
@@ -256,7 +256,7 @@ void Server::disconnectPlayer(PlayerId id)
     players_[idx].entity.destroy();
     players_.erase(players_.begin() + idx);
     world_.flush();
-    fmt::print("Client disconnected (id = {})\n", id);
+    println("Client disconnected (id = {})", id);
     const auto terminal = getUsedTerminal(id);
     if (terminal) {
         shipSystems_.at(*terminal).terminalUser = InvalidPlayerId;
@@ -274,12 +274,12 @@ void Server::receive(PlayerId id, uint8_t channelId, const enet::Packet& packet)
     ReadBuffer buffer(packet.getData<uint8_t>(), packet.getSize());
     CommonMessageHeader header;
     if (!deserialize(buffer, header)) {
-        fmt::print(stderr, "Could not decode common message header\n");
+        printErr("Could not decode common message header");
         return; // Ignore message
     }
     const auto messageType = static_cast<MessageType>(header.messageType);
     if (static_cast<Channel>(channelId) == Channel::Reliable) {
-        // fmt::print("[server] Received message: {}\n", asString(messageType));
+        // println("[server] Received message: {}", asString(messageType));
     }
     switch (messageType) {
         MESSAGE_CASE(ClientMoveUpdate);
@@ -288,7 +288,7 @@ void Server::receive(PlayerId id, uint8_t channelId, const enet::Packet& packet)
         MESSAGE_CASE(ClientExecuteCommand);
         MESSAGE_CASE(ClientPlaySound);
     default:
-        fmt::print(stderr, "Received unrecognized message: {}\n", asString(messageType));
+        printErr("Received unrecognized message: {}", asString(messageType));
     }
 }
 
@@ -319,8 +319,7 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
     if (message.terminal.empty()) {
         const auto terminal = getUsedTerminal(player.id);
         if (!terminal) {
-            fmt::print(stderr, "Player {} stopped using a terminal when no terminal was used.\n",
-                player.id);
+            printErr("Player {} stopped using a terminal when no terminal was used.", player.id);
             return;
         }
         shipSystems_.at(*terminal).terminalUser = InvalidPlayerId;
@@ -346,7 +345,7 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
 {
     const auto terminal = getUsedTerminal(player.id);
     if (!terminal) {
-        fmt::print("Player {} sent a terminal update without using a terminal\n", player.id);
+        printErr("Player {} sent a terminal update without using a terminal", player.id);
         return;
     }
     shipSystems_.at(*terminal).terminalInput = message.input;
@@ -357,7 +356,7 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
 {
     const auto systemName = getUsedTerminal(player.id);
     if (!systemName) {
-        fmt::print("Player {} executed a command on a terminal update without using a terminal\n",
+        printErr("Player {} executed a command on a terminal update without using a terminal",
             player.id);
         return;
     }
