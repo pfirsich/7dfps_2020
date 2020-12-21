@@ -637,9 +637,10 @@ void Client::update(float dt)
         trafo.lookAt(lookAtPos);
 
         auto& ctrl = player_.get<comp::PlayerInputController>();
-        const auto angles = glm::eulerAngles(trafo.getOrientation());
-        ctrl.pitch = angles.y;
-        ctrl.yaw = angles.x;
+        // glm::eulerAngles returns I don't even know what (some total bullshit)
+        const auto fwd = -trafo.getForward();
+        ctrl.yaw = glm::atan(fwd.x, fwd.z);
+        ctrl.pitch = 0.0f;
 
         if (ctrl.interact->getPressed()) {
             stopTerminalInteraction();
