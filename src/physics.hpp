@@ -68,6 +68,8 @@ struct PlayerInputController {
     std::unique_ptr<AnalogInput> lookY;
 
     std::unique_ptr<BinaryInput> interact;
+
+    void updateFromOrientation(const comp::Transform& trafo);
 };
 }
 

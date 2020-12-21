@@ -62,12 +62,14 @@ struct Message;
 template <>
 struct Message<MessageType::ServerHello> {
     uint32_t playerId;
-    glm::vec3 spawnPos;
+    glm::vec3 spawnPosition;
+    glm::quat spawnOrientation;
 
     SERIALIZE()
     {
         FIELD(playerId);
-        FIELD(spawnPos);
+        FIELD(spawnPosition);
+        FIELD(spawnOrientation);
         SERIALIZE_END;
     }
 };

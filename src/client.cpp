@@ -652,10 +652,7 @@ void Client::update(float dt)
         trafo.lookAt(lookAtPos);
 
         auto& ctrl = player_.get<comp::PlayerInputController>();
-        // glm::eulerAngles returns I don't even know what (some total bullshit)
-        const auto fwd = -trafo.getForward();
-        ctrl.yaw = glm::atan(fwd.x, fwd.z);
-        ctrl.pitch = 0.0f;
+        ctrl.updateFromOrientation(trafo);
 
         if (ctrl.interact->getPressed()) {
             stopTerminalInteraction();
@@ -725,7 +722,10 @@ void Client::processMessage(
 {
     assert(playerId_ == InvalidPlayerId);
     playerId_ = message.playerId;
-    player_.get<comp::Transform>().setPosition(message.spawnPos);
+    auto& trafo = player_.get<comp::Transform>();
+    trafo.setPosition(message.spawnPosition);
+    trafo.setOrientation(message.spawnOrientation);
+    player_.get<comp::PlayerInputController>().updateFromOrientation(trafo);
 }
 
 void Client::addPlayer(PlayerId id)

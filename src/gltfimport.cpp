@@ -220,7 +220,7 @@ struct GltfFile::ImportCache {
             const auto max = makeGlm<glm::vec3>(accessor.max);
             const auto offset = (max + min) / 2.0f;
             const auto scale = (max - min) / 2.0f;
-            const auto trs = std::get<gltf::Node::Trs>(node.transform);
+            const auto& trs = std::get<gltf::Node::Trs>(node.transform);
             const auto trsScale = makeGlm<glm::vec3>(trs.scale);
             entity.add<comp::Transform>().setPosition(
                 makeGlm<glm::vec3>(trs.translation) + offset * trsScale);
@@ -252,6 +252,9 @@ struct GltfFile::ImportCache {
                         = std::get<std::string>(obj.at("terminal"));
                 }
             }
+        } else if (node.name && node.name->find("spawn") == 0) {
+            entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));
+            entity.add<comp::SpawnPoint>();
         } else {
             entity.add<comp::Hierarchy>();
             entity.add<comp::Transform>().setMatrix(makeGlm<glm::mat4>(node.getTransformMatrix()));

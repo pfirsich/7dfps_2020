@@ -213,19 +213,24 @@ PlayerId Server::getPlayerId(const void* peerData) const
 
 void Server::findSpawnPosition(Player& player)
 {
-    static constexpr auto spawnPoint = glm::vec3(-5.0f, 10.0f, -17.5f);
-    static constexpr float spawnRange = 4.0f;
-    static constexpr std::array spawnPoints {
-        spawnPoint + glm::vec3(0.0f, 0.0f, 0.0f),
-        spawnPoint + glm::vec3(spawnRange, 0.0f, spawnRange),
-        spawnPoint + glm::vec3(-spawnRange, 0.0f, spawnRange),
-        spawnPoint + glm::vec3(-spawnRange, 0.0f, -spawnRange),
-        spawnPoint + glm::vec3(spawnRange, 0.0f, -spawnRange),
-    };
+    static std::vector<glwx::Transform> spawnPoints;
+    if (spawnPoints.empty()) {
+        world_.forEachEntity<comp::SpawnPoint, comp::Transform>(
+            [](ecs::EntityHandle entity, const comp::SpawnPoint&, const comp::Transform& trafo) {
+                spawnPoints.push_back(trafo);
+                const auto pos = trafo.getPosition();
+                const auto y = std::floor(pos.y / floorHeight) * floorHeight;
+                spawnPoints.back().setPosition(glm::vec3(pos.x, y, pos.z));
+            });
+        if (spawnPoints.empty()) {
+            printErr("No spawn points in level");
+            std::abort();
+        }
+    }
     auto& trafo = player.entity.get<comp::Transform>();
     const auto& collider = player.entity.get<comp::CylinderCollider>();
     for (const auto& pos : spawnPoints) {
-        trafo.setPosition(pos);
+        trafo = pos;
         if (!findFirstCollision(world_, player.entity, trafo, collider)) {
             return;
         }
@@ -247,7 +252,8 @@ void Server::connectPeer(ENetPeer* peer)
     world_.flush();
     findSpawnPosition(player);
     send(player, Channel::Reliable,
-        Message<MessageType::ServerHello> { player.id, trafo.getPosition() });
+        Message<MessageType::ServerHello> {
+            player.id, trafo.getPosition(), trafo.getOrientation() });
 }
 
 void Server::disconnectPlayer(PlayerId id)

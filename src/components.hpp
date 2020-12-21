@@ -28,4 +28,7 @@ struct Rotate {
     glm::vec3 axis;
     float frequency;
 };
+
+struct SpawnPoint {
+};
 }

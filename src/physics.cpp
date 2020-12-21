@@ -152,6 +152,14 @@ void integrationSystem(ecs::World& world, float dt)
         });
 }
 
+void comp::PlayerInputController::updateFromOrientation(const comp::Transform& trafo)
+{
+    // glm::eulerAngles returns I don't even know what (some total bullshit)
+    const auto fwd = -trafo.getForward();
+    yaw = glm::atan(fwd.x, fwd.z);
+    pitch = 0.0f; // TODO
+}
+
 void playerLookSystem(ecs::World& world, float dt)
 {
     world.forEachEntity<comp::Transform, comp::PlayerInputController>(
