@@ -26,6 +26,7 @@ private:
         PlayerId id;
         std::unordered_map<ShipSystem::Name, size_t> lastKnownTerminalSize;
         std::unordered_map<ShipSystem::Name, bool> lastKnownTerminalEnabled;
+        std::unordered_map<ShipSystem::Name, size_t> lastKnownHistoryCount;
 
         static PlayerId getNextId();
 
@@ -36,6 +37,8 @@ private:
         std::unique_ptr<ShipSystem> system;
         PlayerId terminalUser = InvalidPlayerId;
         std::string terminalInput {};
+        std::deque<std::string> history = {};
+        size_t historyCount = 0;
         bool terminalEnabled = false;
         bool initialized = false;
     };
@@ -74,7 +77,7 @@ private:
     PlayerId getPlayerId(const void* peerData) const;
     void connectPeer(ENetPeer* peer);
     void disconnectPlayer(PlayerId id);
-    void receive(PlayerId id, const enet::Packet& packet);
+    void receive(PlayerId id, uint8_t channelId, const enet::Packet& packet);
     void findSpawnPosition(Player& player);
     std::optional<std::string> getUsedTerminal(PlayerId id) const;
 

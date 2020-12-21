@@ -498,7 +498,7 @@ void Client::processEnetEvents()
     std::optional<enet::Event> event;
     while ((event = host_.service())) {
         if (const auto recvEvent = std::get_if<enet::ReceiveEvent>(&event.value())) {
-            receive(recvEvent->packet);
+            receive(recvEvent->channelId, recvEvent->packet);
         } else if (const auto disconnect = std::get_if<enet::DisconnectEvent>(&event.value())) {
             fmt::print(stderr, "Disconnected by server\n");
             running_ = false;
@@ -680,7 +680,7 @@ void Client::sendUpdate()
         processMessage<MessageType::Type>(header.frameNumber, buffer);                             \
         break;
 
-void Client::receive(const enet::Packet& packet)
+void Client::receive(uint8_t channelId, const enet::Packet& packet)
 {
     ReadBuffer buffer(packet.getData<uint8_t>(), packet.getSize());
     CommonMessageHeader header;
@@ -689,6 +689,9 @@ void Client::receive(const enet::Packet& packet)
         return; // Ignore message
     }
     const auto messageType = static_cast<MessageType>(header.messageType);
+    if (static_cast<Channel>(channelId) == Channel::Reliable) {
+        // fmt::print("[client] Received message: {}\n", asString(messageType));
+    }
     switch (messageType) {
         MESSAGE_CASE(ServerHello);
         MESSAGE_CASE(ServerPlayerStateUpdate);
@@ -804,9 +807,12 @@ void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerAddTerminalHistory>& message)
 {
     auto& termData = terminalData_[message.terminal];
-    termData.history.push_front(message.command);
-    while (termData.history.size() > maxHistoryEntries)
+    for (const auto& command : message.commands) {
+        termData.history.push_front(command);
+    }
+    while (termData.history.size() > maxHistoryEntries) {
         termData.history.pop_back();
+    }
 }
 
 void Client::processMessage(

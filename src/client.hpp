@@ -49,7 +49,7 @@ private:
     void processEnetEvents();
     void update(float dt);
     void sendUpdate();
-    void receive(const enet::Packet& packet);
+    void receive(uint8_t channelId, const enet::Packet& packet);
     void draw();
     void addPlayer(PlayerId id);
     void handleInteractions();

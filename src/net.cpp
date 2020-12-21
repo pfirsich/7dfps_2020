@@ -19,6 +19,12 @@ std::string asString(MessageType messageType)
         return "ClientExecuteCommand";
     case MessageType::ServerUpdateTerminalOutput:
         return "ServerUpdateTerminalOutput";
+    case MessageType::ServerAddTerminalHistory:
+        return "ServerAddTerminalHistory";
+    case MessageType::ClientPlaySound:
+        return "ClientPlaySound";
+    case MessageType::ServerUpdateInputEnabled:
+        return "ServerUpdateInputEnabled";
     default:
         return fmt::format("Unknown({})", static_cast<uint8_t>(messageType));
     }

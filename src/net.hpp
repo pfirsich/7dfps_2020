@@ -169,12 +169,12 @@ struct Message<MessageType::ServerUpdateTerminalOutput> {
 template <>
 struct Message<MessageType::ServerAddTerminalHistory> {
     std::string terminal;
-    std::string command;
+    std::vector<std::string> commands;
 
     SERIALIZE()
     {
         FIELD(terminal);
-        FIELD(command);
+        FIELD_VEC(commands);
         SERIALIZE_END;
     }
 };

@@ -120,6 +120,18 @@ void Server::tick(float /*dt*/)
                     Message<MessageType::ServerUpdateInputEnabled> { name, terminalEnabled });
                 player.lastKnownTerminalEnabled[name] = terminalEnabled;
             }
+
+            const auto deltaHist = std::min(
+                system.history.size(), system.historyCount - player.lastKnownHistoryCount[name]);
+            if (deltaHist > 0) {
+                Message<MessageType::ServerAddTerminalHistory> message { name, {} };
+                message.commands.reserve(deltaHist);
+                for (size_t i = system.history.size() - deltaHist; i < system.history.size(); ++i) {
+                    message.commands.push_back(system.history[i]);
+                }
+                send(player, Channel::Reliable, message);
+                player.lastKnownHistoryCount[name] = system.historyCount;
+            }
         }
     }
 
@@ -167,7 +179,7 @@ void Server::processEnetEvents()
         } else if (const auto discEvent = std::get_if<enet::DisconnectEvent>(&event.value())) {
             disconnectPlayer(getPlayerId(discEvent->peerData));
         } else if (const auto recvEvent = std::get_if<enet::ReceiveEvent>(&event.value())) {
-            receive(getPlayerId(recvEvent->peer->data), recvEvent->packet);
+            receive(getPlayerId(recvEvent->peer->data), recvEvent->channelId, recvEvent->packet);
         } else if (const auto errEvent = std::get_if<enet::ServiceFailedEvent>(&event.value())) {
             fmt::print(stderr, "Host service failed: {}\n", errEvent->result);
         }
@@ -256,7 +268,7 @@ void Server::disconnectPlayer(PlayerId id)
         processMessage<MessageType::Type>(player, header.frameNumber, buffer);                     \
         break;
 
-void Server::receive(PlayerId id, const enet::Packet& packet)
+void Server::receive(PlayerId id, uint8_t channelId, const enet::Packet& packet)
 {
     auto& player = players_[getPlayerIndex(id)];
     ReadBuffer buffer(packet.getData<uint8_t>(), packet.getSize());
@@ -266,6 +278,9 @@ void Server::receive(PlayerId id, const enet::Packet& packet)
         return; // Ignore message
     }
     const auto messageType = static_cast<MessageType>(header.messageType);
+    if (static_cast<Channel>(channelId) == Channel::Reliable) {
+        // fmt::print("[server] Received message: {}\n", asString(messageType));
+    }
     switch (messageType) {
         MESSAGE_CASE(ClientMoveUpdate);
         MESSAGE_CASE(ClientInteractTerminal);
@@ -346,13 +361,17 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
             player.id);
         return;
     }
+    auto& system = shipSystems_.at(*systemName);
+
     if (!message.command.empty()) {
-        broadcast(Channel::Reliable,
-            Message<MessageType::ServerAddTerminalHistory> { *systemName, message.command });
+        system.history.push_back(message.command);
+        system.historyCount++;
+        while (system.history.size() > 32) {
+            system.history.pop_front();
+        }
     }
 
-    auto& system = shipSystems_.at(*systemName).system;
-    system->executeCommand(message.command);
+    system.system->executeCommand(message.command);
 }
 
 void Server::processMessage(
