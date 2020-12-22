@@ -41,6 +41,7 @@ const auto vert = R"(
 const auto frag = R"(
     #version 330 core
 
+    uniform vec3 tint;
     uniform float ambientBlend = 0.8;
 
     uniform vec4 baseColorFactor;
@@ -57,7 +58,9 @@ const auto frag = R"(
     void main() {
         vec4 base = baseColorFactor * texture(baseColorTexture, texCoords);
         float nDotL = max(dot(lightDir, normalize(normal)), 0.0);
-        fragColor = mix(vec4(base.rgb * mix(nDotL, 1.0, ambientBlend), base.a), glowColor, glowAmount);
+        float brightness = mix(nDotL, 1.0, ambientBlend);
+        vec4 lit = vec4(base.rgb * tint * brightness, base.a);
+        fragColor = mix(lit, glowColor, glowAmount);
     }
 )"sv;
 
@@ -272,6 +275,14 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
 
             shader.setUniform("glowAmount", highlighted ? glowAmount : 0.0f);
             shader.setUniform("blowup", 0.0f);
+
+            const auto lightsOff = false;
+            const auto lightsOffColor = glm::vec3(0.2f, 0.05f, 0.05f);
+            if (lightsOff && !entity.has<comp::Outside>()) {
+                shader.setUniform("tint", lightsOffColor);
+            } else {
+                shader.setUniform("tint", glm::vec3(1.0f));
+            }
 
             mesh->draw(shader);
         });

@@ -266,6 +266,10 @@ struct GltfFile::ImportCache {
                 comp::Hierarchy::setParent(entity, parent);
             }
 
+            if (node.name && node.name->find("outside:") == 0) {
+                entity.add<comp::Outside>();
+            }
+
             const auto& extras = node.extras;
             if (!std::holds_alternative<gltf::JsonNull>(extras)) {
                 const auto& obj = *std::get<std::unique_ptr<gltf::JsonObject>>(extras);

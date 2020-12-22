@@ -73,6 +73,9 @@ using Mesh = std::shared_ptr<Mesh>;
 
 struct RenderHighlight {
 };
+
+struct Outside {
+};
 }
 
 namespace AttributeLocations {
