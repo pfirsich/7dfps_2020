@@ -28,6 +28,7 @@ private:
         std::unordered_map<ShipSystem::Name, size_t> lastKnownTerminalSize;
         std::unordered_map<ShipSystem::Name, bool> lastKnownTerminalEnabled;
         std::unordered_map<ShipSystem::Name, size_t> lastKnownHistoryCount;
+        ShipState lastKnownShipState;
 
         static PlayerId getNextId();
 

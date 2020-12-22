@@ -101,6 +101,14 @@ command("power-cutoff", "set", {"SYSTEMNAME", "PERCENTAGE"}, function(systemName
 
 end)
 
+command("poweron", "", {}, function()
+    setShipState("reactorPower", 1.0)
+end)
+
+command("poweroff", "", {}, function()
+    setShipState("reactorPower", 0.0)
+end)
+
 manual("reactor", [[
 The reactor SR-388 is made up a grid of fusion cells.
 ]])

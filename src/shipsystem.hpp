@@ -24,6 +24,14 @@ struct Terminal {
 };
 }
 
+struct ShipState {
+    float engineThrottle = 0.0f;
+    float reactorPower = 0.0f;
+
+    bool operator==(const ShipState& other) const;
+    bool operator!=(const ShipState& other) const;
+};
+
 template <typename T, typename V, typename Func>
 std::optional<size_t> findField(const T& container, const V& fieldValue, Func&& func)
 {
@@ -210,6 +218,8 @@ private:
 };
 
 struct LuaShipSystem : public ShipSystem {
+    static ShipState shipState;
+
     sol::state lua;
 
     LuaShipSystem(const ShipSystem::Name& name, const fs::path& scriptPath);

@@ -712,6 +712,7 @@ void Client::receive(uint8_t channelId, const enet::Packet& packet)
         MESSAGE_CASE(ServerAddTerminalHistory);
         MESSAGE_CASE(ClientPlaySound);
         MESSAGE_CASE(ServerUpdateInputEnabled);
+        MESSAGE_CASE(ServerUpdateShipState);
     default:
         printErr("Received unrecognized message: {}", asString(messageType));
     }
@@ -848,6 +849,13 @@ void Client::processMessage(
     termData.inputEnabled = message.enabled;
 }
 
+void Client::processMessage(
+    uint32_t /*frameNumber*/, const Message<MessageType::ServerUpdateShipState>& message)
+{
+    shipState_.engineThrottle = message.engineThrottle;
+    shipState_.reactorPower = message.reactorPower;
+}
+
 void Client::draw()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -861,7 +869,7 @@ void Client::draw()
     } else if (debugFrustumCulling) {
         cullingRenderSystem(world_, frustum_, cameraTransform);
     } else {
-        renderSystem(world_, frustum_, cameraTransform);
+        renderSystem(world_, frustum_, cameraTransform, shipState_);
         skybox_->draw(frustum_, cameraTransform);
     }
 

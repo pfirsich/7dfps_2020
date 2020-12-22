@@ -90,6 +90,8 @@ private:
     void processMessage(uint32_t frameNumber, const Message<MessageType::ClientPlaySound>& message);
     void processMessage(
         uint32_t frameNumber, const Message<MessageType::ServerUpdateInputEnabled>& message);
+    void processMessage(
+        uint32_t frameNumber, const Message<MessageType::ServerUpdateShipState>& message);
 
     SoLoud::handle playEntitySound(const std::string& name, const std::string entityName,
         float volume = 1.0f, float playbackSpeed = 1.0f);
@@ -103,6 +105,7 @@ private:
     ecs::World world_;
     Frustum frustum_;
     PlayerState state_;
+    ShipState shipState_;
     float nextStepSound_ = 0.0f;
     std::unordered_map<PlayerId, ecs::EntityHandle> players_; // excludes self
     std::unordered_map<ShipSystem::Name, TerminalData> terminalData_;

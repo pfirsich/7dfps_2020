@@ -233,7 +233,8 @@ RenderStats getRenderStats()
     return renderStats;
 }
 
-void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform)
+void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform,
+    const ShipState& shipState)
 {
     const auto& shader = getShader();
     shader.bind();
@@ -248,7 +249,7 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
         std::cos(glwx::getTime() * glowFrequency * 2.0f * M_PI), -1.0f, 1.0f, glowMin, glowMax);
 
     world.forEachEntity<const comp::Transform, const comp::Mesh>(
-        [&frustum, &view, &shader, glowAmount](
+        [&frustum, &shipState, &view, &shader, glowAmount](
             ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
             const auto model = getModelMatrix(entity, transform);
             shader.setUniform("modelMatrix", model);
@@ -276,7 +277,7 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
             shader.setUniform("glowAmount", highlighted ? glowAmount : 0.0f);
             shader.setUniform("blowup", 0.0f);
 
-            const auto lightsOff = false;
+            const auto lightsOff = shipState.reactorPower == 0.0f;
             const auto lightsOffColor = glm::vec3(0.2f, 0.05f, 0.05f);
             if (lightsOff && !entity.has<comp::Outside>()) {
                 shader.setUniform("tint", lightsOffColor);

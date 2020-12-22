@@ -9,6 +9,7 @@
 
 #include "components.hpp"
 #include "ecs.hpp"
+#include "shipsystem.hpp"
 
 struct Plane {
     // as in nx * x + ny * y + nz * z + d = 0
@@ -99,8 +100,8 @@ RenderStats getRenderStats();
 void collisionRenderSystem(
     ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);
 
-void renderSystem(
-    ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);
+void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform,
+    const ShipState& shipState);
 
 void cullingRenderSystem(
     ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);

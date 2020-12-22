@@ -10,6 +10,16 @@
 #include "constants.hpp"
 #include "util.hpp"
 
+bool ShipState::operator==(const ShipState& other) const
+{
+    return engineThrottle == other.engineThrottle && reactorPower == other.reactorPower;
+}
+
+bool ShipState::operator!=(const ShipState& other) const
+{
+    return !(*this == other);
+}
+
 void MessageBus::registerEndpoint(const EndpointId& id)
 {
     assert(!findEndpoint(id));
@@ -593,6 +603,8 @@ MessageBus::Message getMessage(const std::string& messageId, sol::variadic_args 
 }
 }
 
+ShipState LuaShipSystem::shipState;
+
 LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scriptPath)
     : ShipSystem(name)
 {
@@ -654,6 +666,15 @@ LuaShipSystem::LuaShipSystem(const ShipSystem::Name& name, const fs::path& scrip
         log(logId, static_cast<LogLevel>(level), text);
     });
     lua["time"].set_function([]() { return glwx::getTime(); });
+    lua["setShipState"].set_function([this](const std::string& fieldName, sol::object value) {
+        if (fieldName == "engineThrottle") {
+            shipState.engineThrottle = value.as<float>();
+        } else if (fieldName == "reactorPower") {
+            shipState.reactorPower = value.as<float>();
+        } else {
+            printErr("Invalid ship state field name: '{}'", fieldName);
+        }
+    });
 
     lua.script("require \"media.systems.shared\"");
     lua.script_file(scriptPath.u8string());

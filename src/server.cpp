@@ -135,11 +135,21 @@ void Server::tick(float /*dt*/)
         }
     }
 
+    const auto shipStateMessage = Message<MessageType::ServerUpdateShipState> {
+        LuaShipSystem::shipState.engineThrottle,
+        LuaShipSystem::shipState.reactorPower,
+    };
+
     auto update = Message<MessageType::ServerPlayerStateUpdate>();
     for (auto& player : players_) {
         const auto& trafo = player.entity.get<comp::Transform>();
         update.players.push_back(Message<MessageType::ServerPlayerStateUpdate>::PlayerState {
             player.id, trafo.getPosition(), trafo.getOrientation() });
+
+        if (LuaShipSystem::shipState != player.lastKnownShipState) {
+            send(player, Channel::Reliable, shipStateMessage);
+            player.lastKnownShipState = LuaShipSystem::shipState;
+        }
     }
     broadcast(Channel::Unreliable, update);
 

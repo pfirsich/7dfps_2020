@@ -6,6 +6,7 @@
 
 #include "enet.hpp"
 #include "serialization.hpp"
+#include "shipsystem.hpp"
 #include "util.hpp"
 #include "version.hpp"
 
@@ -52,6 +53,7 @@ enum class MessageType : uint8_t {
     ServerAddTerminalHistory,
     ClientPlaySound,
     ServerUpdateInputEnabled,
+    ServerUpdateShipState,
 };
 
 std::string asString(MessageType messageType);
@@ -204,6 +206,19 @@ struct Message<MessageType::ServerUpdateInputEnabled> {
     {
         FIELD(terminal);
         FIELD(enabled);
+        SERIALIZE_END;
+    }
+};
+
+template <>
+struct Message<MessageType::ServerUpdateShipState> {
+    float engineThrottle;
+    float reactorPower;
+
+    SERIALIZE()
+    {
+        FIELD(engineThrottle);
+        FIELD(reactorPower);
         SERIALIZE_END;
     }
 };
