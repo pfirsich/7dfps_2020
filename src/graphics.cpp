@@ -278,7 +278,7 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
             shader.setUniform("blowup", 0.0f);
 
             const auto lightsOff = shipState.reactorPower == 0.0f;
-            const auto lightsOffColor = glm::vec3(0.3f, 0.06f, 0.06f);
+            const auto lightsOffColor = glm::vec3(0.22f, 0.08f, 0.08f);
             if (lightsOff && !entity.has<comp::Outside>()) {
                 shader.setUniform("tint", lightsOffColor);
             } else {
