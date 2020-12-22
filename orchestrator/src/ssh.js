@@ -10,6 +10,7 @@ async function sleep(time) {
   });
 }
 
+// TODO: Move to config
 function gameCommand(port, gameCode, version) {
   return `
   set -e

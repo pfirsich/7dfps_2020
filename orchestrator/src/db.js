@@ -8,6 +8,9 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
+// TODO: Revisit: Kill timouted games
+// TODO: Adjust: Min VM runtime 45 min (we are always charged for the hour so what)
+
 pool.on("error", (err, client) => {
   console.error("Unexpected error on idle client", err, client);
   console.error("Exiting for good messure");

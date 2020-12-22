@@ -12,7 +12,8 @@ module.exports = {
   // vmImage: "centos-8-x64",
   // vmImage: "ubuntu-16-04-x32",
 
-  vmImage: "75132277", // 7dfps-vm-1607914059830
+  // vmImageId: "75132277",
+  vmImageName: "ac:latest",
 
   vmSshKeys: [
     // Dev

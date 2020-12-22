@@ -47,7 +47,44 @@ async function waitForAction(actionId) {
   }
 }
 
+async function getVmImageId(region) {
+  if (config.vmImageId) {
+    return config.vmImageId;
+  }
+
+  if (!config.vmImageName) {
+    throw new Error("No image specified");
+  }
+
+  const snapshots = await doClient.snapshots.getForDroplets(null, true);
+
+  const snapshot = snapshots.find((s) => s.name === config.vmImageName);
+
+  if (!snapshot) {
+    throw new Error(`No image/snapshot with the name ${config.vmImageName}`);
+  }
+
+  if (!snapshot.regions.includes(region)) {
+    throw new Error(
+      `Missing image/snapshot with the name ${config.vmImageName} for the region ${region}`
+    );
+  }
+
+  config.activeRegions.forEach((activeRegion) => {
+    if (!snapshot.regions.includes(activeRegion)) {
+      console.error(
+        `WARNING: Missing image/snapshot with the name ${config.vmImageName} for the region ${region}`
+      );
+    }
+  });
+
+  return snapshot.id;
+}
+
 async function startVm({ region }) {
+  const image = await getVmImageId(region);
+
+  // TODO: Save the imageId used
   let vm = await db.setVm({
     region,
     state: "INITAL",
@@ -61,7 +98,7 @@ async function startVm({ region }) {
     name,
     region,
     size: config.vmSize,
-    image: config.vmImage,
+    image,
     ssh_keys: config.vmSshKeys,
     backups: false,
     ipv6: true,
