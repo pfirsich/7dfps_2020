@@ -31,4 +31,8 @@ struct Rotate {
 
 struct SpawnPoint {
 };
+
+struct TerminalScreen {
+    std::string system;
+};
 }

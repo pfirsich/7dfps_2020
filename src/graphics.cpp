@@ -1,15 +1,21 @@
 #include "graphics.hpp"
 
 #include <algorithm>
+#include <map>
+#include <string>
 #include <string_view>
 
 #include <glm/gtx/transform.hpp>
+#include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include <glwx.hpp>
 
 #include "components.hpp"
 #include "constants.hpp"
+#include "imgui.hpp"
 #include "physics.hpp"
+#include "terminaldata.hpp"
 #include "util.hpp"
 
 using namespace std::literals;
@@ -61,6 +67,39 @@ const auto frag = R"(
         float brightness = mix(nDotL, 1.0, ambientBlend);
         vec4 lit = vec4(base.rgb * tint * brightness, base.a);
         fragColor = mix(lit, glowColor, glowAmount);
+    }
+)"sv;
+
+const auto terminalFrag = R"(
+    #version 330 core
+
+    uniform vec4 baseColorFactor;
+    uniform sampler2D baseColorTexture;
+    uniform vec2 texCoordScale;
+    uniform vec2 texCoordOffset;
+
+    in vec2 texCoords;
+
+    out vec4 fragColor;
+
+    vec2 flipX(vec2 tc) {
+        return vec2(1.0 - tc.x, tc.y);
+    }
+
+    void main() {
+        // I don't know why I have to flipX, but I do
+        vec2 tc = flipX(texCoords) * texCoordScale + texCoordOffset;
+        fragColor = baseColorFactor * texture(baseColorTexture, tc);
+    }
+)"sv;
+
+const auto whiteFrag = R"(
+    #version 330 core
+
+    out vec4 fragColor;
+
+    void main() {
+        fragColor = vec4(1.0);
     }
 )"sv;
 
@@ -205,6 +244,66 @@ bool Frustum::contains(const glm::vec3& center, float radius) const
 }
 
 namespace {
+struct TimeDelta {
+    float step()
+    {
+        const auto now = glwx::getTime();
+        const auto dt = now - last;
+        last = now;
+        return dt;
+    }
+
+private:
+    float last;
+};
+
+struct TerminalAtlas {
+    glm::ivec2 size;
+    glm::ivec2 screenSize;
+    glwx::RenderTarget renderTarget;
+    std::unordered_map<std::string, glm::vec2> textureOffsets;
+
+    TerminalAtlas(const glm::ivec2& atlasSize, const glm::ivec2& screenSize)
+        : size(atlasSize)
+        , screenSize(screenSize)
+        , renderTarget(glwx::makeRenderTarget(
+              atlasSize.x, atlasSize.y, { glw::ImageFormat::Rgba }, { glw::ImageFormat::Stencil8 }))
+    {
+    }
+
+    glm::vec2 getOffset(const std::string& systemName)
+    {
+        const auto it = textureOffsets.find(systemName);
+        if (it == textureOffsets.end()) {
+            const auto screensPerRow = static_cast<size_t>(size.x / screenSize.x);
+            const auto row = textureOffsets.size() / screensPerRow;
+            const auto col = textureOffsets.size() % screensPerRow;
+            const auto offset = glm::vec2(col * screenSize.x, row * screenSize.y);
+            textureOffsets.emplace(systemName, offset);
+            return offset;
+        }
+        return it->second;
+    }
+
+    glm::vec2 getTextureScale()
+    {
+        return glm::vec2(
+            screenSize.x / static_cast<float>(size.x), screenSize.y / static_cast<float>(size.y));
+    }
+
+    glm::vec2 getTextureOffset(const std::string& systemName)
+    {
+        const auto off = getOffset(systemName);
+        return glm::vec2(off.x / size.x, (size.y - off.y - screenSize.y) / size.y);
+    }
+};
+
+TerminalAtlas& getTerminalAtlas()
+{
+    static TerminalAtlas atlas(glm::ivec2(4096), glm::ivec2(1024));
+    return atlas;
+}
+
 glw::ShaderProgram& getShader()
 {
     static glw::ShaderProgram shader = glwx::makeShaderProgram(vert, frag).value();
@@ -233,18 +332,79 @@ RenderStats getRenderStats()
     return renderStats;
 }
 
-struct TimeDelta {
-    float step()
-    {
-        const auto now = glwx::getTime();
-        const auto dt = now - last;
-        last = now;
-        return dt;
-    }
+static std::map<std::string, glwx::RenderTarget> terminalScreenTargets;
 
-private:
-    float last;
-};
+void renderTerminalScreens(ecs::World& world,
+    std::unordered_map<std::string, TerminalData>& termData, const std::string& terminalInUse)
+{
+    const auto vp = glw::State::instance().getViewport();
+
+    auto& atlas = getTerminalAtlas();
+    atlas.renderTarget.bind();
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    drawImgui(atlas.size.x, atlas.size.y, [&world, &termData, &terminalInUse, &atlas]() {
+        world.forEachEntity<comp::TerminalScreen>(
+            [&termData, &terminalInUse, &atlas](const comp::TerminalScreen& screen) {
+                const auto& system = screen.system;
+                auto& term = termData[system];
+
+                const auto pos = atlas.getOffset(system);
+                const auto margin = 20;
+                ImGui::SetNextWindowPos(ImVec2(pos.x + margin, pos.y + margin));
+                ImGui::SetNextWindowSize(
+                    ImVec2(atlas.screenSize.x - margin * 2, atlas.screenSize.y - margin * 2));
+                ImGui::Begin(system.c_str(), nullptr, ImGuiWindowFlags_NoDecoration);
+                ImGui::BeginChild("Child",
+                    ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 45),
+                    false, ImGuiWindowFlags_NoScrollWithMouse);
+                ImGui::PushTextWrapPos(0.0f);
+                ImGui::TextUnformatted(term.output.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::SetScrollY(std::min(term.scroll, ImGui::GetScrollMaxY()));
+                term.lastMaxScroll = ImGui::GetScrollMaxY();
+                ImGui::EndChild();
+                ImGui::PushItemWidth(-1);
+                // https://github.com/ocornut/imgui/issues/455
+                // This cost some time. the InputText keeps focus the whole time it's visible, so it
+                // gets to own inputText.
+                static std::string inputText;
+                ImGuiInputTextFlags flags = 0;
+                // If term.input got changed from the outside, it's because of choosing history
+                // entries or pressing return to execute.
+                if (system == terminalInUse && inputText != term.input) {
+                    inputText = term.input;
+                    flags = ImGuiInputTextFlags_ReadOnly;
+                }
+                if (!term.inputEnabled) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f);
+                }
+                ImGui::InputText("Execute", &inputText, flags);
+                term.input = inputText;
+                if (!term.inputEnabled) {
+                    ImGui::PopStyleVar();
+                }
+                if (system == terminalInUse) {
+                    ImGui::SetKeyboardFocusHere(-1);
+                }
+                ImGui::PopItemWidth();
+                ImGui::End();
+            });
+
+        if (terminalInUse.empty()) {
+            // We want to take focus away from all terminals, so I create a dummy off-screen window
+            // that takes the focus
+            ImGui::SetKeyboardFocusHere();
+            ImGui::SetNextWindowPos(ImVec2(atlas.size.x, atlas.size.y));
+            ImGui::Begin("Focus Dummy");
+            ImGui::End();
+        }
+    });
+
+    glw::Framebuffer::unbind();
+    glw::State::instance().setViewport(vp);
+}
 
 void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform,
     const ShipState& shipState)
@@ -274,6 +434,9 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
     world.forEachEntity<const comp::Transform, const comp::Mesh>(
         [&frustum, &shipState, &view, &shader, glowAmount, lightTint](
             ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
+            if (entity.has<comp::TerminalScreen>())
+                return;
+
             const auto model = getModelMatrix(entity, transform);
             shader.setUniform("modelMatrix", model);
             const auto modelView = view * model;
@@ -307,6 +470,32 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
             }
 
             mesh->draw(shader);
+        });
+
+    static const auto terminalShader = glwx::makeShaderProgram(vert, terminalFrag).value();
+    terminalShader.bind();
+    terminalShader.setUniform("projectionMatrix", frustum.getMatrix());
+    terminalShader.setUniform("viewMatrix", view);
+    auto& atlas = getTerminalAtlas();
+    auto& atlasTexture = atlas.renderTarget.getTexture(glw::Framebuffer::Attachment::Color0);
+    atlasTexture.bind(0);
+    atlasTexture.generateMipmaps();
+    atlasTexture.setMinFilter(glw::Texture::MinFilter::LinearMipmapLinear);
+    terminalShader.setUniform("baseColorFactor", glm::vec4(1.0f));
+    terminalShader.setUniform("baseColorTexture", 0);
+    terminalShader.setUniform("texCoordScale", atlas.getTextureScale());
+
+    world.forEachEntity<comp::Transform, comp::Mesh, comp::TerminalScreen>(
+        [&frustum, &view, &atlas](ecs::EntityHandle entity, comp::Transform& transform,
+            const comp::Mesh& mesh, const comp::TerminalScreen& screen) {
+            const auto model = getModelMatrix(entity, transform);
+            terminalShader.setUniform("modelMatrix", model);
+
+            terminalShader.setUniform("texCoordOffset", atlas.getTextureOffset(screen.system));
+            for (const auto& prim : mesh->primitives) {
+                prim.primitive.draw();
+                renderStats.drawCalls++;
+            }
         });
 }
 

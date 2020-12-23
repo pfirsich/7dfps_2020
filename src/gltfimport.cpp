@@ -293,6 +293,10 @@ struct GltfFile::ImportCache {
                     entity.add<comp::Rotate>(
                         comp::Rotate { glm::vec3(0.0f, 0.0f, 1.0f), getNum(obj.at("rotate_z")) });
                 }
+                if (obj.count("screen")) {
+                    entity.add<comp::TerminalScreen>(
+                        comp::TerminalScreen { std::get<std::string>(obj.at("screen")) });
+                }
             }
         }
         return entity;

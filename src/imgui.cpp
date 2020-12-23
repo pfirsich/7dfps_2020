@@ -93,7 +93,25 @@ void drawImgui(SDL_Window* window, std::function<void(void)> func)
     ImGui_ImplSDL2_NewFrame(window);
     ImGui::NewFrame();
 
-    // ImGui::ShowDemoWindow();
+    func();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void ImGui_ImplSDL2_NewFrame();
+
+void drawImgui(size_t width, size_t height, std::function<void(void)> func)
+{
+    ImGui_ImplOpenGL3_NewFrame();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2(static_cast<float>(width), static_cast<float>(height));
+    io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
     func();
 
     ImGui::Render();

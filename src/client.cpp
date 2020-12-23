@@ -418,9 +418,9 @@ void Client::terminalHistory(int offset)
         = std::clamp<int>(ts.currentHistoryIndex + offset, 0, termData.history.size());
     assert(ts.currentHistoryIndex >= 0);
     if (ts.currentHistoryIndex == 0)
-        ts.terminalInput = "";
+        termData.input = "";
     else
-        ts.terminalInput = termData.history[ts.currentHistoryIndex - 1];
+        termData.input = termData.history[ts.currentHistoryIndex - 1];
 }
 
 void Client::processSdlEvents()
@@ -461,9 +461,8 @@ void Client::processSdlEvents()
                 case SDL_SCANCODE_RETURN:
                     if (termData.inputEnabled) {
                         send(Channel::Reliable,
-                            Message<MessageType::ClientExecuteCommand> {
-                                terminalState->terminalInput });
-                        terminalState->terminalInput = "";
+                            Message<MessageType::ClientExecuteCommand> { termData.input });
+                        termData.input = "";
                         playEntitySound("terminalExecute", terminalState->terminalEntity);
                     } else {
                         playEntitySound("terminalExecuteDenied", terminalState->terminalEntity);
@@ -504,14 +503,18 @@ void Client::processSdlEvents()
                 player_.get<comp::Transform>().setPosition(glm::vec3(-24.0f, -10.0f, 52.0f));
                 break;
             case SDL_SCANCODE_2:
+                // Nav
+                player_.get<comp::Transform>().setPosition(glm::vec3(-1.5f, 10.0f, -17.5f));
+                break;
+            case SDL_SCANCODE_3:
                 // O2
                 player_.get<comp::Transform>().setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
                 break;
-            case SDL_SCANCODE_3:
+            case SDL_SCANCODE_4:
                 // Reactor
                 player_.get<comp::Transform>().setPosition(glm::vec3(-16.0f, -10.0f, -44.0f));
                 break;
-            case SDL_SCANCODE_4:
+            case SDL_SCANCODE_5:
                 // Shields
                 player_.get<comp::Transform>().setPosition(glm::vec3(-4.0f, 0.0f, 28.0f));
                 break;
@@ -649,7 +652,7 @@ void Client::update(float dt)
     } else if (const auto terminal = std::get_if<TerminalState>(&state_)) {
         auto& trafo = player_.get<comp::Transform>();
         const auto& termTrafo = terminal->terminalEntity.get<comp::Transform>();
-        const auto targetDist = 3.0f;
+        const auto targetDist = 2.5f;
         auto targetPos = termTrafo.getPosition() - termTrafo.getForward() * targetDist;
         targetPos.y = trafo.getPosition().y;
         const auto delta = targetPos - trafo.getPosition();
@@ -822,7 +825,7 @@ ecs::EntityHandle Client::findTerminal(const std::string& system)
 void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerInteractTerminal>& message)
 {
-    state_ = TerminalState { findTerminal(message.terminal), message.terminal, "" };
+    state_ = TerminalState { findTerminal(message.terminal), message.terminal };
     send(Channel::Reliable, Message<MessageType::ClientUpdateTerminalInput> { "" });
 }
 
@@ -877,6 +880,7 @@ void Client::processMessage(
 
 void Client::draw()
 {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     auto cameraTransform = player_.get<comp::Transform>();
@@ -888,57 +892,15 @@ void Client::draw()
     } else if (debugFrustumCulling) {
         cullingRenderSystem(world_, frustum_, cameraTransform);
     } else {
+        std::string terminal;
+        if (const auto termState = std::get_if<TerminalState>(&state_)) {
+            terminal = termState->systemName;
+        }
+
+        renderTerminalScreens(world_, terminalData_, terminal);
         renderSystem(world_, frustum_, cameraTransform, shipState_);
         skybox_->draw(frustum_, cameraTransform);
     }
-
-    // Only one drawImgui call per frame!
-    // Also make sure it's called, even if we don't draw anything, so input is handled correctly
-    // (otherwise widgets that are not drawn keep focus).
-    drawImgui(window_.getSdlWindow(), [this]() {
-        if (std::holds_alternative<TerminalState>(state_)) {
-            // ImGui::ShowDemoWindow();
-
-            auto& terminalState = std::get<TerminalState>(state_);
-            auto& termData = terminalData_[terminalState.systemName];
-
-            constexpr auto margin = 200.0f;
-            const auto size = window_.getSize();
-            ImGui::SetNextWindowPos(ImVec2(margin, margin));
-            ImGui::SetNextWindowSize(ImVec2(size.x - margin * 2.0f, size.y - margin * 2.0f));
-            ImGui::Begin("Terminal", nullptr, ImGuiWindowFlags_NoDecoration);
-            ImGui::BeginChild("Child",
-                ImVec2(ImGui::GetWindowContentRegionWidth(), ImGui::GetWindowHeight() - 45), false,
-                ImGuiWindowFlags_NoScrollWithMouse);
-            ImGui::PushTextWrapPos(0.0f);
-            ImGui::TextUnformatted(termData.output.c_str());
-            ImGui::PopTextWrapPos();
-            ImGui::SetScrollY(std::min(termData.scroll, ImGui::GetScrollMaxY()));
-            termData.lastMaxScroll = ImGui::GetScrollMaxY();
-            ImGui::EndChild();
-            ImGui::PushItemWidth(-1);
-            // https://github.com/ocornut/imgui/issues/455
-            // This cost some time. the InputText keeps focus the whole time it's visible, so it
-            // gets to own inputText.
-            static std::string inputText;
-            ImGuiInputTextFlags flags = 0;
-            if (inputText != terminalState.terminalInput) { // I probably changed it, likely history
-                inputText = terminalState.terminalInput;
-                flags = ImGuiInputTextFlags_ReadOnly;
-            }
-            if (!termData.inputEnabled) {
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f);
-            }
-            ImGui ::InputText("Execute", &inputText, flags);
-            terminalState.terminalInput = inputText;
-            if (!termData.inputEnabled) {
-                ImGui::PopStyleVar();
-            }
-            ImGui::SetKeyboardFocusHere(-1);
-            ImGui::PopItemWidth();
-            ImGui::End();
-        }
-    });
 
     window_.swap();
 }

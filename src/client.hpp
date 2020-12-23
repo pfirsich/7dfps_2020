@@ -10,6 +10,7 @@
 #include "net.hpp"
 #include "shipsystem.hpp"
 #include "sound.hpp"
+#include "terminaldata.hpp"
 #include "util.hpp"
 
 class Client {
@@ -26,20 +27,10 @@ private:
     struct TerminalState {
         ecs::EntityHandle terminalEntity;
         std::string systemName;
-        std::string terminalInput;
         int currentHistoryIndex = 0;
     };
 
     using PlayerState = std::variant<MoveState, TerminalState>;
-
-    struct TerminalData {
-        std::deque<std::string> history;
-        std::string input;
-        std::string output;
-        float scroll = 0.0f;
-        float lastMaxScroll = 0.0f;
-        bool inputEnabled = false;
-    };
 
     uint32_t showConnectCodeMenu(std::optional<HostPort>& hostPort);
     void showError(const std::string& message);
