@@ -284,8 +284,8 @@ struct TerminalAtlas {
     TerminalAtlas(const glm::ivec2& atlasSize, const glm::ivec2& screenSize)
         : size(atlasSize)
         , screenSize(screenSize)
-        , renderTarget(glwx::makeRenderTarget(
-              atlasSize.x, atlasSize.y, { glw::ImageFormat::Rgba }, { glw::ImageFormat::Stencil8 }))
+        , renderTarget(
+              glwx::makeRenderTarget(atlasSize.x, atlasSize.y, { glw::ImageFormat::Rgba }, {}))
     {
     }
 
@@ -352,7 +352,7 @@ RenderStats getRenderStats()
 
 static std::map<std::string, glwx::RenderTarget> terminalScreenTargets;
 
-void renderTerminalScreens(ecs::World& world,
+void renderTerminalScreens(ecs::World& world, const glm::vec3& cameraPosition,
     std::unordered_map<std::string, TerminalData>& termData, const std::string& terminalInUse)
 {
     const auto vp = glw::State::instance().getViewport();
@@ -360,12 +360,20 @@ void renderTerminalScreens(ecs::World& world,
     auto& atlas = getTerminalAtlas();
     atlas.renderTarget.bind();
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-    drawImgui(atlas.size.x, atlas.size.y, [&world, &termData, &terminalInUse, &atlas]() {
-        world.forEachEntity<comp::TerminalScreen>(
-            [&termData, &terminalInUse, &atlas](const comp::TerminalScreen& screen) {
+    println("draw imgui");
+    const auto size = atlas.size;
+    drawImgui(size.x, size.y, [&world, &cameraPosition, &termData, &terminalInUse, &atlas]() {
+        world.forEachEntity<comp::Transform, comp::TerminalScreen>(
+            [&cameraPosition, &termData, &terminalInUse, &atlas](
+                const comp::Transform& transform, const comp::TerminalScreen& screen) {
+                if (glm::abs(transform.getPosition().y - cameraPosition.y) > floorHeight / 2.0f) {
+                    return;
+                }
+
                 const auto& system = screen.system;
+                println("draw {}", system);
                 auto& term = termData[system];
 
                 const auto pos = atlas.getOffset(system);
@@ -385,8 +393,8 @@ void renderTerminalScreens(ecs::World& world,
                 ImGui::EndChild();
                 ImGui::PushItemWidth(-1);
                 // https://github.com/ocornut/imgui/issues/455
-                // This cost some time. the InputText keeps focus the whole time it's visible, so it
-                // gets to own inputText.
+                // This cost some time. the InputText keeps focus the whole time it's visible,
+                // so it gets to own inputText.
                 static std::string inputText;
                 ImGuiInputTextFlags flags = 0;
                 // If term.input got changed from the outside, it's because of choosing history
@@ -411,8 +419,8 @@ void renderTerminalScreens(ecs::World& world,
             });
 
         if (terminalInUse.empty()) {
-            // We want to take focus away from all terminals, so I create a dummy off-screen window
-            // that takes the focus
+            // We want to take focus away from all terminals, so I create a dummy off-screen
+            // window that takes the focus
             ImGui::SetKeyboardFocusHere();
             ImGui::SetNextWindowPos(ImVec2(atlas.size.x, atlas.size.y));
             ImGui::Begin("Focus Dummy");

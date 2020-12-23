@@ -897,7 +897,8 @@ void Client::draw()
             terminal = termState->systemName;
         }
 
-        renderTerminalScreens(world_, terminalData_, terminal);
+        renderTerminalScreens(
+            world_, player_.get<comp::Transform>().getPosition(), terminalData_, terminal);
         renderSystem(world_, frustum_, cameraTransform, shipState_);
         skybox_->draw(frustum_, cameraTransform);
     }

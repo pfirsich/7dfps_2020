@@ -101,7 +101,7 @@ RenderStats getRenderStats();
 void collisionRenderSystem(
     ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform);
 
-void renderTerminalScreens(ecs::World& world,
+void renderTerminalScreens(ecs::World& world, const glm::vec3& cameraPosition,
     std::unordered_map<std::string, TerminalData>& terminalData, const std::string& terminalInUse);
 
 void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform,
