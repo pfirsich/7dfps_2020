@@ -346,6 +346,8 @@ void ShipSystem::manCommand()
 {
     terminalOutput("Available commands:\n");
     for (const auto& command : commands_) {
+        if (command.internal)
+            continue;
         for (const auto& subCommand : command.subCommands) {
             terminalOutput(" * " + getUsage(command, subCommand));
         }
