@@ -70,6 +70,24 @@ const auto frag = R"(
     }
 )"sv;
 
+const auto terminalVert = R"(
+    #version 330 core
+
+    uniform mat4 modelMatrix;
+    uniform mat4 viewMatrix;
+    uniform mat4 projectionMatrix;
+
+    layout (location = 0) in vec3 attrPosition;
+    layout (location = 3) in vec2 attrTexCoords;
+
+    out vec2 texCoords;
+
+    void main() {
+        texCoords = attrTexCoords;
+        gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(attrPosition, 1.0);
+    }
+)"sv;
+
 const auto terminalFrag = R"(
     #version 330 core
 
@@ -472,7 +490,7 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
             mesh->draw(shader);
         });
 
-    static const auto terminalShader = glwx::makeShaderProgram(vert, terminalFrag).value();
+    static const auto terminalShader = glwx::makeShaderProgram(terminalVert, terminalFrag).value();
     terminalShader.bind();
     terminalShader.setUniform("projectionMatrix", frustum.getMatrix());
     terminalShader.setUniform("viewMatrix", view);
