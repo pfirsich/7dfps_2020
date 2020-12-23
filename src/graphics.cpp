@@ -233,9 +233,25 @@ RenderStats getRenderStats()
     return renderStats;
 }
 
+struct TimeDelta {
+    float step()
+    {
+        const auto now = glwx::getTime();
+        const auto dt = now - last;
+        last = now;
+        return dt;
+    }
+
+private:
+    float last;
+};
+
 void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transform& cameraTransform,
     const ShipState& shipState)
 {
+    static TimeDelta timeDelta;
+    const auto dt = timeDelta.step();
+
     const auto& shader = getShader();
     shader.bind();
     shader.setUniform("lightDir", glm::vec3(0.0f, 0.0f, 1.0f));
@@ -248,8 +264,15 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
     const float glowAmount = rescale(
         std::cos(glwx::getTime() * glowFrequency * 2.0f * M_PI), -1.0f, 1.0f, glowMin, glowMax);
 
+    const auto lightsOffColor = glm::vec3(0.22f, 0.08f, 0.08f);
+    const auto lightsOff = shipState.reactorPower == 0.0f;
+    static float lerpedPower = shipState.reactorPower;
+    lerpedPower = approach(lerpedPower, shipState.reactorPower, 1.0f / 0.5f * dt);
+    const auto tintLerp = std::cos(std::exp(-lerpedPower) * glm::pi<float>() * 11.0f) * 0.5f + 0.5f;
+    const auto lightTint = glm::mix(lightsOffColor, glm::vec3(1.0f), tintLerp);
+
     world.forEachEntity<const comp::Transform, const comp::Mesh>(
-        [&frustum, &shipState, &view, &shader, glowAmount](
+        [&frustum, &shipState, &view, &shader, glowAmount, lightTint](
             ecs::EntityHandle entity, const comp::Transform& transform, const comp::Mesh& mesh) {
             const auto model = getModelMatrix(entity, transform);
             shader.setUniform("modelMatrix", model);
@@ -277,10 +300,8 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
             shader.setUniform("glowAmount", highlighted ? glowAmount : 0.0f);
             shader.setUniform("blowup", 0.0f);
 
-            const auto lightsOff = shipState.reactorPower == 0.0f;
-            const auto lightsOffColor = glm::vec3(0.22f, 0.08f, 0.08f);
-            if (lightsOff && !entity.has<comp::Outside>()) {
-                shader.setUniform("tint", lightsOffColor);
+            if (!entity.has<comp::Outside>()) {
+                shader.setUniform("tint", lightTint);
             } else {
                 shader.setUniform("tint", glm::vec3(1.0f));
             }

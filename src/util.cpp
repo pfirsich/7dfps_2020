@@ -20,6 +20,18 @@ float rescale(float val, float fromA, float fromB, float toA, float toB)
     return lerp(toA, toB, unlerp(val, fromA, fromB));
 }
 
+float approach(float current, float target, float delta)
+{
+    assert(delta > 0.0f);
+    const auto diff = target - current;
+    if (diff > 0.0f) {
+        current += std::min(diff, delta);
+    } else if (diff < 0.0f) {
+        current -= std::min(-diff, delta);
+    }
+    return current;
+}
+
 std::optional<float> parseFloat(const std::string& str)
 {
     try {

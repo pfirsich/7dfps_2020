@@ -12,6 +12,8 @@ float lerp(float a, float b, float t);
 float unlerp(float val, float a, float b);
 float rescale(float val, float fromA, float fromB, float toA, float toB);
 
+float approach(float current, float target, float delta);
+
 // I would use boost's lexical cast, if I had another reason to use boost
 template <typename T = long long>
 std::optional<T> parseInt(const std::string& str, int base = 10)
