@@ -353,8 +353,6 @@ RenderStats getRenderStats()
     return renderStats;
 }
 
-static std::map<std::string, glwx::RenderTarget> terminalScreenTargets;
-
 void renderTerminalScreens(ecs::World& world, const glm::vec3& cameraPosition,
     std::unordered_map<std::string, TerminalData>& termData, const std::string& terminalInUse)
 {
