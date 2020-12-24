@@ -85,7 +85,10 @@ struct GltfFile::ImportCache {
 
         auto tex = glwx::makeTexture2D(data.first, data.second, mipmaps);
         assert(tex);
-        tex->setMinFilter(minFilter);
+        // tex->setMinFilter(minFilter);
+        // Use LinearMipmapLinear for now, because the mip level boundaries are very visible
+        // otherwise. We should use anisotropic filtering later.
+        tex->setMinFilter(glw::Texture::MinFilter::LinearMipmapLinear);
         tex->setMagFilter(magFilter);
         tex->setWrap(wrapS, wrapT);
 
