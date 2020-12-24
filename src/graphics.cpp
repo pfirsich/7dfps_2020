@@ -362,7 +362,6 @@ void renderTerminalScreens(ecs::World& world, const glm::vec3& cameraPosition,
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    println("draw imgui");
     const auto size = atlas.size;
     drawImgui(size.x, size.y, [&world, &cameraPosition, &termData, &terminalInUse, &atlas]() {
         world.forEachEntity<comp::Transform, comp::TerminalScreen>(
@@ -373,7 +372,6 @@ void renderTerminalScreens(ecs::World& world, const glm::vec3& cameraPosition,
                 }
 
                 const auto& system = screen.system;
-                println("draw {}", system);
                 auto& term = termData[system];
 
                 const auto pos = atlas.getOffset(system);

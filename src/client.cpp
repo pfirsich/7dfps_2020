@@ -680,6 +680,11 @@ void Client::update(float dt)
             stopTerminalInteraction();
         }
 
+        world_.forEachEntity<const comp::RenderHighlight>(
+            [](ecs::EntityHandle entity, const comp::RenderHighlight&) {
+                entity.remove<comp::RenderHighlight>();
+            });
+
         updateListener(player_.get<comp::Transform>(), glm::vec3(0.0f));
     }
 
