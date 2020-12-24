@@ -293,6 +293,8 @@ struct TerminalAtlas {
     {
         const auto it = textureOffsets.find(systemName);
         if (it == textureOffsets.end()) {
+            const auto maxTerminals = size.x / screenSize.x * size.y / screenSize.y;
+            assert(static_cast<int>(textureOffsets.size()) < maxTerminals);
             const auto screensPerRow = static_cast<size_t>(size.x / screenSize.x);
             const auto row = textureOffsets.size() / screensPerRow;
             const auto col = textureOffsets.size() % screensPerRow;
@@ -318,7 +320,8 @@ struct TerminalAtlas {
 
 TerminalAtlas& getTerminalAtlas()
 {
-    static TerminalAtlas atlas(glm::ivec2(4096), glm::ivec2(1024));
+    // Only max 4 terminals on the same level for now
+    static TerminalAtlas atlas(glm::ivec2(2048), glm::ivec2(1024));
     return atlas;
 }
 
@@ -359,6 +362,7 @@ void renderTerminalScreens(ecs::World& world, const glm::vec3& cameraPosition,
 
     auto& atlas = getTerminalAtlas();
     atlas.renderTarget.bind();
+    atlas.textureOffsets.clear();
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -512,6 +516,11 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
     world.forEachEntity<comp::Transform, comp::Mesh, comp::TerminalScreen>(
         [&frustum, &view, &atlas](ecs::EntityHandle entity, comp::Transform& transform,
             const comp::Mesh& mesh, const comp::TerminalScreen& screen) {
+            if (!atlas.textureOffsets.count(screen.system)) {
+                // It was culled
+                return;
+            }
+
             const auto model = getModelMatrix(entity, transform);
             terminalShader.setUniform("modelMatrix", model);
 
