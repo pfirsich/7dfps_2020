@@ -499,24 +499,24 @@ void Client::processSdlEvents()
                 println("pos: {}", player_.get<comp::Transform>().getPosition());
                 break;
             case SDL_SCANCODE_1:
-                // Engine
-                player_.get<comp::Transform>().setPosition(glm::vec3(-24.0f, -10.0f, 52.0f));
-                break;
-            case SDL_SCANCODE_2:
                 // Nav
                 player_.get<comp::Transform>().setPosition(glm::vec3(-1.5f, 10.0f, -17.5f));
                 break;
-            case SDL_SCANCODE_3:
+            case SDL_SCANCODE_2:
                 // O2
                 player_.get<comp::Transform>().setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+                break;
+            case SDL_SCANCODE_3:
+                // Shields
+                player_.get<comp::Transform>().setPosition(glm::vec3(-4.0f, 0.0f, 28.0f));
                 break;
             case SDL_SCANCODE_4:
                 // Reactor
                 player_.get<comp::Transform>().setPosition(glm::vec3(-16.0f, -10.0f, -44.0f));
                 break;
             case SDL_SCANCODE_5:
-                // Shields
-                player_.get<comp::Transform>().setPosition(glm::vec3(-4.0f, 0.0f, 28.0f));
+                // Engine
+                player_.get<comp::Transform>().setPosition(glm::vec3(-24.0f, -10.0f, 52.0f));
                 break;
 #endif
             default:
