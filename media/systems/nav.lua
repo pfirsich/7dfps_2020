@@ -6,7 +6,9 @@ init(function()
         [[|  . `  |   /  /_\  \  \      /     \      /]],
         [[|  |\   |  /  _____  \  \    /       \    /]],
         [[|__| \__| /__/     \__\  \__/         \__/]],
+        "",
         "Logged in as root.",
+        "",
         "Type 'manual' to see available commands",
     })
 end)
