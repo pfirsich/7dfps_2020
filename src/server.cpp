@@ -104,7 +104,9 @@ void Server::tick(float /*dt*/)
         const auto totalOutputSize = system.system->getTotalTerminalOutputSize();
         const auto& output = system.system->getTerminalOutput();
         for (auto& player : players_) {
-            const auto lastKnownTermSize = player.lastKnownTerminalSize[name];
+            auto& lastKnown = player.lastKnownSystemState[name];
+
+            const auto lastKnownTermSize = lastKnown.terminalSize;
             assert(totalOutputSize >= lastKnownTermSize);
             const auto deltaLength = totalOutputSize - lastKnownTermSize;
             if (deltaLength > 0) {
@@ -112,17 +114,17 @@ void Server::tick(float /*dt*/)
                 const auto delta = output.substr(output.size() - maxDeltaLength);
                 send(player, Channel::Reliable,
                     Message<MessageType::ServerUpdateTerminalOutput> { name, delta });
-                player.lastKnownTerminalSize[name] = totalOutputSize;
+                lastKnown.terminalSize = totalOutputSize;
             }
 
-            if (terminalEnabled != player.lastKnownTerminalEnabled[name]) {
+            if (terminalEnabled != lastKnown.terminalEnabled) {
                 send(player, Channel::Reliable,
                     Message<MessageType::ServerUpdateInputEnabled> { name, terminalEnabled });
-                player.lastKnownTerminalEnabled[name] = terminalEnabled;
+                lastKnown.terminalEnabled = terminalEnabled;
             }
 
-            const auto deltaHist = std::min(
-                system.history.size(), system.historyCount - player.lastKnownHistoryCount[name]);
+            const auto deltaHist
+                = std::min(system.history.size(), system.historyCount - lastKnown.historyCount);
             if (deltaHist > 0) {
                 Message<MessageType::ServerAddTerminalHistory> message { name, {} };
                 message.commands.reserve(deltaHist);
@@ -130,7 +132,13 @@ void Server::tick(float /*dt*/)
                     message.commands.push_back(system.history[i]);
                 }
                 send(player, Channel::Reliable, message);
-                player.lastKnownHistoryCount[name] = system.historyCount;
+                lastKnown.historyCount = system.historyCount;
+            }
+
+            if (system.terminalUser != lastKnown.terminalUser) {
+                send(player, Channel::Reliable,
+                    Message<MessageType::ServerInteractTerminal> { name, system.terminalUser });
+                lastKnown.terminalUser = system.terminalUser;
             }
         }
     }
@@ -346,8 +354,7 @@ void Server::processMessage(Player& player, uint32_t /*frameNumber*/,
 
         if (it->second.terminalUser == InvalidPlayerId) { // terminal not used
             it->second.terminalUser = player.id;
-            send(player, Channel::Reliable,
-                Message<MessageType::ServerInteractTerminal> { message.terminal });
+
             if (!it->second.initialized) {
                 it->second.system->executeInternalCommand("internal_init");
                 it->second.initialized = true;

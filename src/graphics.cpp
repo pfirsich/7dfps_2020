@@ -446,7 +446,6 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
     const auto view = glm::inverse(cameraTransform.getMatrix());
     shader.setUniform("viewMatrix", view);
     shader.setUniform("ambientBlend", 0.8f);
-    shader.setUniform("glowColor", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
     const float glowAmount = rescale(
         std::cos(glwx::getTime() * glowFrequency * 2.0f * M_PI), -1.0f, 1.0f, glowMin, glowMax);
 
@@ -477,11 +476,14 @@ void renderSystem(ecs::World& world, const Frustum& frustum, const glwx::Transfo
             const auto normal = glm::mat3(glm::transpose(glm::inverse(modelView)));
             shader.setUniform("normalMatrix", normal);
 
-            const auto highlighted = entity.has<comp::RenderHighlight>();
+            const auto highlighted = entity.getPtr<comp::RenderHighlight>();
             if (highlighted) {
                 glFrontFace(GL_CW);
                 shader.setUniform("glowAmount", 1.0f);
                 shader.setUniform("blowup", outlineBlowup);
+                shader.setUniform("glowColor",
+                    highlighted->canInteract ? glm::vec4(1.0f, 1.0f, 0.0f, 1.0f)
+                                             : glm::vec4(0.65f, 0.0f, 0.0f, 1.0f));
                 mesh->draw(shader);
                 glFrontFace(GL_CCW);
             }

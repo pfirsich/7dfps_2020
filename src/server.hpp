@@ -22,12 +22,17 @@ public:
 
 private:
     struct Player {
+        struct LastKnownSystemState {
+            size_t terminalSize = 0;
+            bool terminalEnabled = false;
+            size_t historyCount = 0;
+            PlayerId terminalUser = InvalidPlayerId;
+        };
+
         ecs::EntityHandle entity;
         ENetPeer* peer;
         PlayerId id;
-        std::unordered_map<ShipSystem::Name, size_t> lastKnownTerminalSize;
-        std::unordered_map<ShipSystem::Name, bool> lastKnownTerminalEnabled;
-        std::unordered_map<ShipSystem::Name, size_t> lastKnownHistoryCount;
+        std::unordered_map<ShipSystem::Name, LastKnownSystemState> lastKnownSystemState;
         ShipState lastKnownShipState;
 
         static PlayerId getNextId();

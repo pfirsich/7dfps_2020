@@ -128,10 +128,12 @@ struct Message<MessageType::ClientInteractTerminal> {
 template <>
 struct Message<MessageType::ServerInteractTerminal> {
     std::string terminal;
+    PlayerId user;
 
     SERIALIZE()
     {
         FIELD(terminal);
+        FIELD(user);
         SERIALIZE_END;
     }
 };

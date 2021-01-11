@@ -74,6 +74,7 @@ namespace comp {
 using Mesh = std::shared_ptr<Mesh>;
 
 struct RenderHighlight {
+    bool canInteract;
 };
 
 struct Outside {

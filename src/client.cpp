@@ -554,7 +554,7 @@ void Client::handleInteractions()
     const auto rayOrigin = trafo.getPosition() + glm::vec3(0.0f, cameraOffsetY, 0.0f);
     const auto rayDir = trafo.getForward();
     auto hit = castRay(world_, rayOrigin, rayDir);
-    const auto interact = player_.get<comp::PlayerInputController>().interact->getPressed();
+    const auto interactPressed = player_.get<comp::PlayerInputController>().interact->getPressed();
     if (hit && hit->t <= interactDistance) {
         static ecs::EntityHandle lastHit;
         if (hit->entity != lastHit) {
@@ -565,8 +565,11 @@ void Client::handleInteractions()
             hitMarker_.get<comp::Transform>().setPosition(rayOrigin + rayDir * hit->t);
         };
         if (auto linked = hit->entity.getPtr<comp::VisualLink>()) {
-            linked->entity.add<comp::RenderHighlight>();
-            if (interact) {
+            const auto canInteract = !hit->entity.has<comp::Terminal>()
+                || terminalData_[hit->entity.get<comp::Terminal>().systemName].currentUser
+                    == InvalidPlayerId;
+            linked->entity.add<comp::RenderHighlight>(comp::RenderHighlight { canInteract });
+            if (interactPressed) {
                 if (const auto ladder = hit->entity.getPtr<comp::Ladder>()) {
                     // Sometimes we use a ladder, when we are too far away from it and end up
                     // teleporting into a wall.
@@ -593,7 +596,7 @@ void Client::handleInteractions()
             }
         }
         if (auto terminal = hit->entity.getPtr<comp::Terminal>()) {
-            if (interact) {
+            if (interactPressed) {
                 send(Channel::Reliable,
                     Message<MessageType::ClientInteractTerminal> { terminal->systemName });
                 hit->entity.get<comp::VisualLink>().entity.remove<comp::RenderHighlight>();
@@ -830,8 +833,11 @@ ecs::EntityHandle Client::findTerminal(const std::string& system)
 void Client::processMessage(
     uint32_t /*frameNumber*/, const Message<MessageType::ServerInteractTerminal>& message)
 {
-    state_ = TerminalState { findTerminal(message.terminal), message.terminal };
-    send(Channel::Reliable, Message<MessageType::ClientUpdateTerminalInput> { "" });
+    terminalData_[message.terminal].currentUser = message.user;
+    if (message.user == playerId_) {
+        state_ = TerminalState { findTerminal(message.terminal), message.terminal };
+        send(Channel::Reliable, Message<MessageType::ClientUpdateTerminalInput> { "" });
+    }
 }
 
 void Client::processMessage(

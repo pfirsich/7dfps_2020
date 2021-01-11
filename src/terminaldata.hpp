@@ -3,6 +3,8 @@
 #include <deque>
 #include <string>
 
+#include "net.hpp"
+
 // For client
 struct TerminalData {
     std::deque<std::string> history;
@@ -11,4 +13,5 @@ struct TerminalData {
     float scroll = 0.0f;
     float lastMaxScroll = 0.0f;
     bool inputEnabled = false;
+    PlayerId currentUser = InvalidPlayerId;
 };
