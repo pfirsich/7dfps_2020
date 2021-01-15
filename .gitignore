@@ -9,3 +9,4 @@ untracked/
 *.blend1
 imgui.ini
 config.lua
+.cache
