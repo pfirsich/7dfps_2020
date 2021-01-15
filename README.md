@@ -31,5 +31,41 @@ You can find the necessary packages in [build.yml](.github/workflows/build.yml).
 
 ### Mac
 
-See above, but thankfully every package, except [docopt](https://github.com/docopt/docopt.cpp) is available on homebrew. To install that manually, just clone it and do the usual CMake song and dance.
-[LuaJIT](https://github.com/LuaJIT/LuaJIT) is also on homebrew but.. don't use it. So please also just clone and manually install it (`make MACOSX_DEPLOYMENT_TARGET=10.15 && make install` or something like that).
+Linke Linux, but thankfully every package, except [docopt](https://github.com/docopt/docopt.cpp) is available on homebrew. To install that manually, just clone it and do the usual CMake song and dance.
+[LuaJIT](https://github.com/LuaJIT/LuaJIT) is also on homebrew but.. don't use it. So please also just clone and manually install it.
+
+In detail you have to do this:
+
+```sh
+# Clone the game
+git clone git@github.com:pfirsich/7dfps_2020.git && cd 7dfps_2020
+
+# Init needed submodules
+git submodule update --init deps/glwrap deps/gltf deps/sol2 deps/imgui deps/soloud/repo
+cd deps/glwrap && git submodule update --init deps/stb && cd ../..
+cd deps/gltf && git submodule update --init simdjson && cd ../..
+
+# Install brew deps
+brew install ninja cmake sdl2 fmt glm enet
+
+# Create a directory to clone and build the other deps
+mkdir build-other-deps
+cd build-other-deps
+
+# clone and build docopt
+git clone git@github.com:docopt/docopt.cpp.git && cd docopt.cpp
+mkdir build && cd build
+cmake -G Ninja -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo -DCMAKE_CXX_COMPILER=clang++ ..
+ninja
+sudo ninja install
+cd ../..
+
+# clone and build lua jit
+git clone git@github.com:LuaJIT/LuaJIT.git && cd LuaJIT
+# NOTE: MACOSX_DEPLOYMENT_TARGET needs to be a supported SDK.
+# SDKs are installed in `/Library/Developer/CommandLineTools/SDKs/`.
+# For `10.15` to work you need to have `MacOSX10.15.sdk` in this directory.
+# Other versions might work too.
+make MACOSX_DEPLOYMENT_TARGET=10.15
+sudo make install
+```
