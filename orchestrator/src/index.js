@@ -110,7 +110,7 @@ app.get("/games/:gameCode", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error while getting game", error);
+    console.error("Error while getting game:", error);
 
     res.status(500).json({
       msg: "Internal server error",

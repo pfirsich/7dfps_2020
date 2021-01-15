@@ -85,7 +85,7 @@ async function getFreeVms({ region, maxGamesOnVm }) {
 
 async function getEmptyVms() {
   // Get VMs that are RUNNING and where no games exits which are still
-  // running or just ended less than 20 minutes ago.
+  // running or just ended less than 5 minutes ago.
   // Excuse my subselects.
   const res = await query(
     `SELECT *
@@ -97,7 +97,7 @@ async function getEmptyVms() {
              WHERE games.vmId = vms.vmId
                  AND (games.state != 'OVER'
                      OR (games.state = 'OVER'
-                         AND games.timeEnded > NOW() - INTERVAL '1 minutes')))`
+                         AND games.timeEnded > NOW() - INTERVAL '5 minutes')))`
   );
 
   return res.rows.map(vmRowToObject);
@@ -174,7 +174,7 @@ async function getGameByGameId(gameId) {
 
 async function getTimeoutedGames() {
   const res = await query(
-    `SELECT * FROM games WHERE state != 'OVER' AND timeStarted < NOW() - INTERVAL '2 hours'`
+    `SELECT * FROM games WHERE state != 'OVER' AND timeStarted < NOW() - INTERVAL '90 minutes'`
   );
 
   return res.rows.map(gameRowToObject);

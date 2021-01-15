@@ -66,14 +66,15 @@ function spawnGameProcess(ssh, gameInfo, onExitGame) {
     });
 }
 
-async function waitForShh({ host, port }) {
-  const maxTries = 15;
-  const waitTimeSec = 5;
+async function waitForShh({ host, port }, maxWaitTime) {
+  const sleepTimeSec = 5;
   let tries = 0;
 
   while (true) {
-    if (tries >= maxTries) {
-      throw new Error(`Too many tries waiting for ssh connection (${tries})`);
+    if (sleepTimeSec * tries >= maxWaitTime) {
+      throw new Error(
+        `Too many tries waiting for ssh connection to ${host}:${port} (tries: ${tries})`
+      );
     }
     tries++;
 
@@ -95,11 +96,10 @@ async function waitForShh({ host, port }) {
       ssh.dispose();
 
       console.log(
-        `Waiting for ssh connection (${waitTimeSec} sec): ${host}:${port}, tries: ${tries}, error: ${error.message}`
+        `Waiting for ssh connection (${sleepTimeSec} sec): ${host}:${port}, tries: ${tries}, error: ${error.message}`
       );
 
-      await sleep(waitTimeSec * 1000);
-      continue;
+      await sleep(sleepTimeSec * 1000);
     }
   }
 }

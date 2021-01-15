@@ -7,14 +7,15 @@
   "plugins": ["prettier"],
   "rules": {
     "prettier/prettier": ["warn"],
-    "no-console": "off",
     "max-classes-per-file": "off",
-    "no-plusplus": "off",
     "no-await-in-loop": "off",
-    "no-param-reassign": "off",
-    "no-continue": "off",
+    "no-console": "off",
     "no-constant-condition": "off",
+    "no-continue": "off",
+    "no-param-reassign": "off",
+    "no-plusplus": "off",
+    "no-restricted-properties": "off",
     "no-restricted-syntax": "off",
-    "no-restricted-properties": "off"
+    "no-use-before-define": "off"
   }
 }

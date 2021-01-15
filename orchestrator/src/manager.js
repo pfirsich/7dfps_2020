@@ -17,18 +17,19 @@ async function sleep(time) {
   });
 }
 
-async function waitForAction(actionId) {
-  const waitTimeSec = 5;
-  const maxTries = 20;
+async function waitForAction(actionId, maxWaitTimeSec) {
+  const sleepTimeSec = 5;
   let tries = 0;
 
-  while (true) {
-    tries++;
-    if (tries >= maxTries) {
-      throw new Error(`Too many tries waiting for action (${tries} tries)`);
-    }
+  await sleep(1000);
 
-    await sleep(waitTimeSec * 1000);
+  while (true) {
+    if (sleepTimeSec * tries >= maxWaitTimeSec) {
+      throw new Error(
+        `Too many tries waiting for action ${actionId} (${tries} tries)`
+      );
+    }
+    tries++;
 
     const { action } = await doClient.actions.getById(actionId);
 
@@ -42,8 +43,10 @@ async function waitForAction(actionId) {
     }
 
     console.log(
-      `Waiting for action (${waitTimeSec} sec): ${actionId}, tries: ${tries}`
+      `Waiting for action (${sleepTimeSec} sec): ${actionId}, tries: ${tries}`
     );
+
+    await sleep(sleepTimeSec * 1000);
   }
 }
 
@@ -94,20 +97,27 @@ async function startVm({ region }) {
   const name = `${config.vmPrefix}${vm.vmId}`;
   console.log(`Starting droplet: ${name}`);
 
-  const result = await doClient.droplets.create({
-    name,
-    region,
-    size: config.vmSize,
-    image,
-    ssh_keys: config.vmSshKeys,
-    backups: false,
-    ipv6: true,
-    // user_data doesn't work for some reason
-    // user_data: initScript(vm),
-    monitoring: true,
-    volumes: null,
-    tags: [...config.vmTags, `vmId:${vm.vmId}`],
-  });
+  let result;
+  try {
+    result = await doClient.droplets.create({
+      name,
+      region,
+      size: config.vmSize,
+      image,
+      ssh_keys: config.vmSshKeys,
+      backups: false,
+      ipv6: true,
+      monitoring: true,
+      volumes: null,
+      tags: [...config.vmTags, `vmId:${vm.vmId}`],
+    });
+  } catch (error) {
+    console.log(
+      "WARNING: Request to create VM failed, probably didn't start the VM, lets hope so..."
+    );
+    await shutDownVm(vm);
+    throw error;
+  }
 
   vm = await db.setVm({
     ...vm,
@@ -119,7 +129,13 @@ async function startVm({ region }) {
 
   console.log(`Droplet creation ${name}, Action ID: ${actionId}`);
 
-  await waitForAction(actionId);
+  try {
+    await waitForAction(actionId, 600);
+  } catch (error) {
+    console.log("WARNING: Droplet creation timed out, trying to stop VM");
+    await shutDownVm(vm);
+    throw error;
+  }
 
   const { droplet } = await doClient.droplets.getById(result.droplet.id);
 
@@ -138,11 +154,11 @@ async function startVm({ region }) {
 }
 
 async function shutDownVm(vm) {
-  console.log(
-    `Shuting down vm:${vm.vmId} Droplet: ${vm.dropletId} IP: ${vm.ipv4Address}`
-  );
-
   if (vm.dropletId) {
+    console.log(
+      `Shuting down vm:${vm.vmId} Droplet: ${vm.dropletId} IP: ${vm.ipv4Address}`
+    );
+
     vm = await db.setVm({
       ...vm,
       state: "SHUTTING_DOWN",
@@ -151,8 +167,12 @@ async function shutDownVm(vm) {
     try {
       await doClient.droplets.deleteById(vm.dropletId);
     } catch (error) {
-      // Ignore 404, assume droplet already removed
-      if (!error.message.includes("404")) {
+      if (error.message.includes("404")) {
+        // Ignore 404, assume droplet already removed
+        console.log(
+          `WARNING: Droplet ${vm.dropletId} can not be shut down, not found, probably already down`
+        );
+      } else {
         throw error;
       }
     }
