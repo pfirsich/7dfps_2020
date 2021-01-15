@@ -67,7 +67,7 @@ function spawnGameProcess(ssh, gameInfo, onExitGame) {
 }
 
 async function waitForShh({ host, port }, maxWaitTime) {
-  const sleepTimeSec = 5;
+  const sleepTimeSec = 8;
   let tries = 0;
 
   while (true) {

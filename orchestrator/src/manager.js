@@ -18,7 +18,7 @@ async function sleep(time) {
 }
 
 async function waitForAction(actionId, maxWaitTimeSec) {
-  const sleepTimeSec = 5;
+  const sleepTimeSec = 8;
   let tries = 0;
 
   await sleep(1000);
@@ -44,6 +44,41 @@ async function waitForAction(actionId, maxWaitTimeSec) {
 
     console.log(
       `Waiting for action (${sleepTimeSec} sec): ${actionId}, tries: ${tries}`
+    );
+
+    await sleep(sleepTimeSec * 1000);
+  }
+}
+
+async function waitForVmToBeRunning(vmId, maxWaitTimeSec) {
+  const sleepTimeSec = 8;
+  let tries = 0;
+
+  await sleep(1000);
+
+  while (true) {
+    if (sleepTimeSec * tries >= maxWaitTimeSec) {
+      throw new Error(
+        `Too many tries waiting for VM to be running vm:${vmId} (${tries} tries)`
+      );
+    }
+    tries++;
+
+    const vm = await db.getVm(vmId);
+
+    if (vm.state === "RUNNING") {
+      console.log(
+        `Finished waiting for VM to be running: vm:${vmId}, tries: ${tries}`
+      );
+      return vm;
+    }
+
+    if (vm.state === "TERMINATED" || vm.state === "SHUTTING_DOWN") {
+      return new Error("Waiting for VM failed, VM ended up stopped");
+    }
+
+    console.log(
+      `Waiting for VM to be running (${sleepTimeSec} sec): vm:${vmId}, tries: ${tries}`
     );
 
     await sleep(sleepTimeSec * 1000);
@@ -203,12 +238,25 @@ async function getOrCreateVm({ region }) {
   });
 
   if (freeVms.length > 0) {
-    console.log(`Reusing vm:${freeVms[0].vmId}`);
-    return freeVms[0];
+    let selectedVm = freeVms.find((vm) => vm.state === "RUNNING") || freeVms[0];
+
+    console.log(
+      `Reusing vm:${selectedVm.vmId} for start game request in region ${region}`
+    );
+
+    if (selectedVm.state === "PROVISIONING") {
+      console.log(
+        `Trying to reuse vm:${selectedVm.vmId} that is still PROVISIONING, wating..`
+      );
+      selectedVm = await waitForVmToBeRunning(selectedVm.vmId);
+    }
+
+    return selectedVm;
   }
 
-  const vmCount = await db.countVms();
+  // or, start new VM
 
+  const vmCount = await db.countVms();
   if (vmCount >= config.maxVms) {
     const error = new Error("Max VM count reached");
     error.full = true;
@@ -232,6 +280,10 @@ async function onExitGame(gameInfo) {
 }
 
 async function startGame({ region, creatorIpAddress, version }) {
+  console.log(
+    `Request to start game in region ${region} with version ${version} from ${creatorIpAddress}`
+  );
+
   const gameCodeMaxChars = config.gameCodeSize.toString(16).length;
   const gameCode = Math.round(Math.random() * config.gameCodeSize)
     .toString(16)

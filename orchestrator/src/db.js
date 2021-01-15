@@ -67,13 +67,26 @@ async function countVms() {
   return Number(res.rows[0].vmcount);
 }
 
+async function getVm(vmId) {
+  const res = await query("SELECT * FROM vms WHERE vmId = $1", [vmId]);
+
+  if (res.rows.length === 0) {
+    return null;
+  }
+
+  return res.rows.map(vmRowToObject);
+}
+
+/**
+ + VMs that games can be places on
+ */
 async function getFreeVms({ region, maxGamesOnVm }) {
-  // Sort descending to always fill VMs first
+  // Sort descending to always fill VMs up to the limit first
   const res = await query(
     `SELECT vms.*, COUNT(games.gamecode) AS gamesCount
         FROM vms
-        LEFT JOIN (SELECT * FROM games WHERE games.state != 'OVER') as games ON vms.vmId=games.vmId
-        WHERE region = $1 AND vms.state = 'RUNNING'
+        LEFT JOIN (SELECT * FROM games WHERE games.state != 'OVER') as games ON vms.vmId = games.vmId
+        WHERE region = $1 AND (vms.state = 'RUNNING' or vms.state = 'PROVISIONING')
         GROUP BY vms.vmid
         HAVING COUNT(games.gamecode) < $2
         ORDER BY gamesCount DESC`,
@@ -235,6 +248,7 @@ module.exports = {
   countVms,
   getFreeVms,
   getEmptyVms,
+  getVm,
   setVm,
   getGameByGameCode,
   getGameByGameId,
