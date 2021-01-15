@@ -27,4 +27,5 @@ module.exports = {
   vmPrefix: "ac-vm-",
 
   activeRegions: ["fra1", "sfo3", "nyc1", "sgp1"],
+  validVersion: ["jam", "latest"],
 };

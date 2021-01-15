@@ -6,10 +6,9 @@ const morgan = require("morgan");
 
 const manager = require("./manager");
 const geo = require("./geo");
+const config = require("./config");
 
 const app = express();
-
-const VALID_VERSIONS = ["jam", "latest"];
 
 function getClientIp(req) {
   return (
@@ -51,7 +50,7 @@ app.post("/games", async (req, res) => {
     return;
   }
 
-  if (!VALID_VERSIONS.includes(version)) {
+  if (!config.validVersion.includes(version)) {
     res.status(400).json({ msg: "Invalid version" });
     return;
   }
