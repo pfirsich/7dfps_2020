@@ -37,7 +37,12 @@ async function getIpGeo(ipAddress) {
     url = "https://tools.keycdn.com/geo.json";
   }
 
-  const { data } = await fetchJson(url);
+  const { data } = await fetchJson(url, {
+    headers: {
+      // See: https://tools.keycdn.com/geo#ip-location-finder-api
+      "User-Agent": `keycdn-tools:${config.site}`,
+    },
+  });
 
   if (!data.geo.latitude) {
     throw new Error(`No location for IP: ${ipAddress}`);
@@ -80,7 +85,7 @@ async function getRegions(ipAddress) {
   try {
     ipGeo = await getIpGeo(ipAddress);
   } catch (error) {
-    // Don't fail if external API down
+    // Don't fail if external API down, just log and move on
     console.error(error);
   }
 

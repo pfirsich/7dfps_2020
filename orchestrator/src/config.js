@@ -28,4 +28,6 @@ module.exports = {
 
   activeRegions: ["fra1", "sfo3", "nyc1", "sgp1"],
   validVersion: ["jam", "latest"],
+
+  site: "http://arbitrarycomplexity.sudohack.net/",
 };
