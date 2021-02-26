@@ -31,7 +31,7 @@ You can find the necessary packages in [build.yml](.github/workflows/build.yml).
 
 ### Mac
 
-Linke Linux, but thankfully every package, except [docopt](https://github.com/docopt/docopt.cpp) is available on homebrew. To install that manually, just clone it and do the usual CMake song and dance.
+Like Linux, but thankfully every package, except [docopt](https://github.com/docopt/docopt.cpp) is available on homebrew. To install that manually, just clone it and do the usual CMake song and dance.
 [LuaJIT](https://github.com/LuaJIT/LuaJIT) is also on homebrew but.. don't use it. So please also just clone and manually install it.
 
 In detail you have to do this:
