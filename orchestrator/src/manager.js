@@ -78,7 +78,7 @@ async function waitForVmToBeRunning(vmId, maxWaitTimeSec) {
     }
 
     console.log(
-      `Waiting for VM to be running (${sleepTimeSec} sec): vm:${vmId}, tries: ${tries}`
+      `Waiting for ${vm.state} VM (${sleepTimeSec} sec): vm:${vmId}, tries: ${tries}`
     );
 
     await sleep(sleepTimeSec * 1000);
@@ -230,7 +230,7 @@ async function checkVms() {
   await Promise.all(emptyVms.map(shutDownVm));
 }
 
-// TODO: this should all be one transaction....
+// TODO: this should all be a transaction....
 async function getOrCreateVm({ region }) {
   const freeVms = await db.getFreeVms({
     region,
@@ -248,7 +248,7 @@ async function getOrCreateVm({ region }) {
       console.log(
         `Trying to reuse vm:${selectedVm.vmId} that is still PROVISIONING, wating..`
       );
-      selectedVm = await waitForVmToBeRunning(selectedVm.vmId);
+      selectedVm = await waitForVmToBeRunning(selectedVm.vmId, 180);
     }
 
     return selectedVm;

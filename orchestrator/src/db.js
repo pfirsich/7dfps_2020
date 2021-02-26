@@ -74,7 +74,7 @@ async function getVm(vmId) {
     return null;
   }
 
-  return res.rows.map(vmRowToObject);
+  return vmRowToObject(res.rows[0]);
 }
 
 /**
