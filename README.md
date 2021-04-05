@@ -37,18 +37,18 @@ Like Linux, but thankfully every package, except [docopt](https://github.com/doc
 In detail you have to do this:
 
 ```sh
-# Clone the game
+# clone the game
 git clone git@github.com:pfirsich/7dfps_2020.git && cd 7dfps_2020
 
-# Init needed submodules
+# init needed submodules
 git submodule update --init deps/glwrap deps/gltf deps/sol2 deps/imgui deps/soloud/repo
 cd deps/glwrap && git submodule update --init deps/stb && cd ../..
 cd deps/gltf && git submodule update --init simdjson && cd ../..
 
-# Install brew deps
+# install brew deps
 brew install ninja cmake sdl2 fmt glm enet
 
-# Create a directory to clone and build the other deps
+# create a directory to clone and build the other deps
 mkdir build-other-deps
 cd build-other-deps
 
@@ -68,4 +68,17 @@ git clone git@github.com:LuaJIT/LuaJIT.git && cd LuaJIT
 # Other versions might work too.
 make MACOSX_DEPLOYMENT_TARGET=10.15
 sudo make install
+cd ../..
+
+# back to the main repo
+cd ..
+
+# build the game
+mkdir build && cd build
+cmake -G Ninja -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo -DCMAKE_CXX_COMPILER=clang++ ..
+ninja
+
+# run the game
+cd ..
+./build/complexity
 ```
