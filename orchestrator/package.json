@@ -13,11 +13,11 @@
     "async-exit-hook": "^2.0.1",
     "do-wrapper": "^4.1.2",
     "dotenv": "^8.6.0",
-    "express": "^4.17.1",
+    "express": "^4.18.2",
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.1",
-    "node-ssh": "^11.1.1",
-    "pg": "^8.5.1"
+    "node-ssh": "^13.0.0",
+    "pg": "^8.8.0"
   },
   "devDependencies": {
     "eslint": "^7.15.0",
