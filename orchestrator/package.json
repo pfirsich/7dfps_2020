@@ -11,7 +11,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "async-exit-hook": "^2.0.1",
-    "do-wrapper": "^4.1.2",
+    "do-wrapper": "^4.5.1",
     "dotenv": "^8.2.0",
     "express": "^4.18.2",
     "morgan": "^1.10.0",
