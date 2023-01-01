@@ -15,7 +15,7 @@
     "do-wrapper": "^4.5.1",
     "express": "^4.18.2",
     "morgan": "^1.10.0",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "node-ssh": "^13.0.0",
     "pg": "^8.8.0"
   },
